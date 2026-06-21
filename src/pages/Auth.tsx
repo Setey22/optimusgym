@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +12,14 @@ type AuthMode = "signin" | "signup" | "reset";
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isAdmin, loading } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState<string | null>(null);
+  const resetSuccess = searchParams.get("reset") === "success";
 
   useEffect(() => {
     if (!loading && user && mode !== "reset") {
@@ -85,6 +87,11 @@ export default function AuthPage() {
           <p className="text-sm text-muted-foreground mb-6">
             {mode === "reset" ? "Te enviaremos un link de recuperación al email del admin." : "Acceso de administrador"}
           </p>
+          {resetSuccess && mode === "signin" && (
+            <div className="mb-5 rounded-xl border border-yellow/50 bg-yellow/15 p-3 text-sm text-ink">
+              Contraseña actualizada. Entrá con tu email y la nueva clave.
+            </div>
+          )}
           {recoveryEmail && mode === "signin" && (
             <div className="mb-5 rounded-xl border border-yellow/50 bg-yellow/15 p-3 text-sm text-ink">
               Enviamos el link de recuperación a <strong>{recoveryEmail}</strong>. Revisá spam/promociones. Si no llega, hay que revisar SMTP y URLs permitidas en Supabase Auth.
