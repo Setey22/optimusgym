@@ -18,6 +18,10 @@ type Exercise = {
   video_type: "youtube" | "upload" | "none"; youtube_id: string | null; video_url: string | null;
 };
 
+function isMissingRepetitionsColumn(message: string) {
+  return message.includes("repetitions") && message.toLowerCase().includes("schema cache");
+}
+
 export default function ExerciseEditor({
   exercise, onClose, onSaved,
 }: { exercise: Exercise; onClose: () => void; onSaved: () => void }) {
@@ -40,23 +44,43 @@ export default function ExerciseEditor({
   }
 
   async function save() {
-    let payload: any = {
+    const repetitions = form.repetitions?.trim() || null;
+    const basePayload: any = {
       title: form.title,
-      repetitions: form.repetitions?.trim() || null,
       tip: form.tip,
       cover_image_url: form.cover_image_url,
       video_type: form.video_type,
       youtube_id: null, video_url: form.video_url,
     };
+    const payload = { ...basePayload, repetitions };
+
     if (form.video_type === "youtube") {
       const id = parseYouTubeId(ytInput);
       if (!id) { toast.error("Link de YouTube inválido"); return; }
       payload.youtube_id = id; payload.video_url = null;
+      basePayload.youtube_id = id; basePayload.video_url = null;
     } else if (form.video_type === "none") {
       payload.video_url = null;
+      basePayload.video_url = null;
     }
+
     setSaving(true);
     const { error } = await supabase.from("exercises").update(payload).eq("id", form.id);
+
+    if (error && isMissingRepetitionsColumn(error.message)) {
+      const retry = await supabase.from("exercises").update(basePayload).eq("id", form.id);
+      setSaving(false);
+
+      if (retry.error) {
+        toast.error(retry.error.message);
+        return;
+      }
+
+      toast.warning("Ejercicio guardado sin repeticiones. Falta aplicar la migración de Supabase para crear la columna repetitions.");
+      onSaved();
+      return;
+    }
+
     setSaving(false);
     if (error) toast.error(error.message); else { toast.success("Guardado"); onSaved(); }
   }
