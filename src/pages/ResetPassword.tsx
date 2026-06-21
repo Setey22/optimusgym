@@ -122,8 +122,9 @@ export default function ResetPasswordPage() {
 
       if (error) throw error;
 
-      toast.success("Contraseña actualizada. Ya podés entrar al panel.");
-      navigate("/admin", { replace: true });
+      await supabase.auth.signOut();
+      toast.success("Contraseña actualizada. Iniciá sesión con tu nueva clave.");
+      navigate("/auth?reset=success", { replace: true });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "No se pudo actualizar la contraseña.";
       toast.error(message);
