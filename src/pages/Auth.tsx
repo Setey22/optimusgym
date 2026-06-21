@@ -31,14 +31,17 @@ export default function AuthPage() {
     e.preventDefault();
     setBusy(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+    setEmail(normalizedEmail);
+
     try {
       if (mode === "reset") {
         const redirectTo = new URL("/reset-password", window.location.origin).toString();
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
 
         if (error) throw error;
 
-        setRecoveryEmail(email);
+        setRecoveryEmail(normalizedEmail);
         toast.success("Te enviamos un email para recuperar la contraseña.");
         setMode("signin");
         return;
@@ -46,7 +49,7 @@ export default function AuthPage() {
 
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: { emailRedirectTo: `${window.location.origin}/admin` },
         });
@@ -54,12 +57,13 @@ export default function AuthPage() {
         toast.success("Cuenta creada. Ya podés iniciar sesión.");
         setMode("signin");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Error";
-      toast.error(message);
+      const isInvalidCredentials = message.toLowerCase().includes("invalid login credentials");
+      toast.error(isInvalidCredentials ? "Email o contraseña inválidos. Revisá que estés usando la última clave creada." : message);
     } finally {
       setBusy(false);
     }
