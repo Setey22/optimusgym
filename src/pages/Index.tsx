@@ -1,160 +1,178 @@
-import { useEffect, useState } from "react";
-import { Menu, X, Play, ChevronDown, ChevronRight } from "lucide-react";
-import workoutThumb from "@/assets/workout-thumb.jpg";
-import { getRoutine, type Gender } from "@/data/routines";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Play, LogIn, ShieldCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { publicUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
+import VideoPlayerDialog from "@/components/VideoPlayerDialog";
+import { Button } from "@/components/ui/button";
 
-const LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
-const DAYS = [1, 2] as const;
+type Gender = "hombres" | "damas";
+type Routine = {
+  id: string; gender: Gender; level: number; name: string;
+  description: string | null; cover_image_url: string | null;
+  days_count: number; is_published: boolean;
+};
+type Exercise = {
+  id: string; routine_id: string; day: number; position: number;
+  title: string; tip: string | null; cover_image_url: string | null;
+  video_type: "youtube" | "upload" | "none"; youtube_id: string | null; video_url: string | null;
+};
+
+const LEVELS = [1, 2, 3, 4, 5, 6, 7];
 
 export default function Index() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { user, isAdmin, signOut } = useAuth();
   const [gender, setGender] = useState<Gender>("hombres");
-  const [level, setLevel] = useState<number>(1);
-  const [day, setDay] = useState<1 | 2>(1);
-
-  const exercises = getRoutine(gender, level, day);
+  const [level, setLevel] = useState(1);
+  const [day, setDay] = useState(1);
+  const [routine, setRoutine] = useState<Routine | null>(null);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [playing, setPlaying] = useState<Exercise | null>(null);
 
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [menuOpen]);
+    let cancel = false;
+    (async () => {
+      setLoading(true);
+      const { data: r } = await supabase
+        .from("routines")
+        .select("*")
+        .eq("gender", gender).eq("level", level)
+        .eq("is_published", true)
+        .maybeSingle();
+      if (cancel) return;
+      setRoutine((r as Routine) ?? null);
+      if (r) {
+        const { data: ex } = await supabase
+          .from("exercises").select("*")
+          .eq("routine_id", r.id).order("day").order("position");
+        if (!cancel) setExercises((ex ?? []) as Exercise[]);
+      } else {
+        setExercises([]);
+      }
+      setLoading(false);
+    })();
+    return () => { cancel = true; };
+  }, [gender, level]);
 
-  const choose = (g: Gender, lv: number) => {
-    setGender(g);
-    setLevel(lv);
-    setMenuOpen(false);
-  };
+  useEffect(() => { if (routine && day > routine.days_count) setDay(1); }, [routine, day]);
+
+  const dayExercises = useMemo(
+    () => exercises.filter((e) => e.day === day).sort((a, b) => a.position - b.position),
+    [exercises, day]
+  );
+
+  const dayTabs = routine ? Array.from({ length: routine.days_count }, (_, i) => i + 1) : [1];
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-ink text-white">
         <div className="flex items-center h-14 md:h-16 px-4 md:px-8">
-          <button
-            aria-label="Abrir menú"
-            onClick={() => setMenuOpen(true)}
-            className="p-2 -ml-2 rounded-md hover:bg-white/10 transition-colors"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <h1 className="ml-3 text-display text-xl md:text-2xl font-bold tracking-widest">
-            RUTINAS
-          </h1>
-          <div className="ml-auto hidden md:flex items-center gap-2 text-xs uppercase tracking-widest text-white/60">
-            <span className="text-yellow font-semibold">{gender}</span>
-            <span>·</span>
-            <span>Nivel {level}</span>
-            <span>·</span>
-            <span>Día {day}</span>
+          <h1 className="text-display text-xl md:text-2xl font-bold tracking-widest">RUTINAS</h1>
+          <div className="ml-auto flex items-center gap-2">
+            {isAdmin && (
+              <Link to="/admin">
+                <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
+                  <ShieldCheck className="h-4 w-4" /> Admin
+                </Button>
+              </Link>
+            )}
+            {user ? (
+              <Button size="sm" variant="ghost" onClick={signOut} className="text-white hover:bg-white/10 hover:text-white">Salir</Button>
+            ) : (
+              <Link to="/auth">
+                <Button size="sm" className="bg-yellow text-ink hover:bg-yellow/90 font-bold">
+                  <LogIn className="h-4 w-4" /> Iniciar sesión
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Side menu + overlay */}
-      {menuOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/50 animate-fade-in"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden
-          />
-          <SideMenu
-            onClose={() => setMenuOpen(false)}
-            onChoose={choose}
-            activeGender={gender}
-            activeLevel={level}
-          />
-        </>
-      )}
-
-      {/* Main */}
       <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto">
-        {/* Controls */}
         <section className="space-y-4 mb-8">
-          <Segmented
-            label="Grupo"
-            options={[
-              { value: "hombres", label: "HOMBRES" },
-              { value: "damas", label: "DAMAS" },
-            ]}
-            value={gender}
-            onChange={(v) => setGender(v as Gender)}
-          />
+          <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
           <div>
-            <Label>Nivel</Label>
+            <MicroLabel>Nivel</MicroLabel>
             <div className="flex flex-wrap gap-2">
               {LEVELS.map((lv) => (
-                <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>
-                  {lv}
-                </Pill>
+                <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
               ))}
             </div>
           </div>
-          <Segmented
-            label="Día"
-            options={DAYS.map((d) => ({ value: String(d), label: `DÍA ${d}` }))}
-            value={String(day)}
-            onChange={(v) => setDay(Number(v) as 1 | 2)}
-          />
+          {routine && routine.days_count > 1 && (
+            <Segmented label="Día" options={dayTabs.map((d) => ({ value: String(d), label: `DÍA ${d}` }))} value={String(day)} onChange={(v) => setDay(Number(v))} />
+          )}
         </section>
 
-        <div className="mb-5 flex items-baseline justify-between">
-          <h2 className="text-display text-2xl md:text-3xl font-bold uppercase">
-            Rutina del día
-          </h2>
-          <span className="text-sm text-muted-foreground">
-            {exercises.length} ejercicios
-          </span>
-        </div>
+        {routine && (
+          <div className="mb-5">
+            <h2 className="text-display text-2xl md:text-3xl font-bold uppercase">{routine.name}</h2>
+            {routine.description && <p className="text-sm text-muted-foreground mt-1">{routine.description}</p>}
+            <div className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">
+              {dayExercises.length} ejercicio{dayExercises.length === 1 ? "" : "s"}
+            </div>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {exercises.map((ex) => (
-            <ExerciseCard key={ex.number} number={ex.number} title={ex.title} tip={ex.tip} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-muted-foreground">Cargando…</div>
+        ) : !routine ? (
+          <EmptyState />
+        ) : dayExercises.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-border p-10 text-center text-muted-foreground">
+            Aún no hay ejercicios cargados para este día.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {dayExercises.map((ex, i) => (
+              <ExerciseCard key={ex.id} index={i + 1} ex={ex} onPlay={() => setPlaying(ex)} />
+            ))}
+          </div>
+        )}
 
         <footer className="mt-12 pb-8 text-center text-xs text-muted-foreground uppercase tracking-widest">
           Entrena con foco · Sin distracciones
         </footer>
       </main>
+
+      <VideoPlayerDialog
+        open={!!playing}
+        onOpenChange={(o) => !o && setPlaying(null)}
+        title={playing?.title ?? ""}
+        videoType={playing?.video_type ?? "none"}
+        youtubeId={playing?.youtube_id}
+        videoUrl={playing?.video_url}
+      />
     </div>
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function EmptyState() {
   return (
-    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-      {children}
+    <div className="bg-white rounded-2xl border border-border p-10 text-center">
+      <h3 className="text-display text-xl font-bold uppercase">Sin rutina disponible</h3>
+      <p className="text-sm text-muted-foreground mt-2">Todavía no hay una rutina publicada para esta combinación.</p>
     </div>
   );
 }
 
-function Segmented<T extends string>({
-  label, options, value, onChange,
-}: {
-  label: string;
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
+function MicroLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">{children}</div>;
+}
+
+function Segmented<T extends string>({ label, options, value, onChange }: { label: string; options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
     <div>
-      <Label>{label}</Label>
-      <div className="inline-flex bg-white rounded-full p-1 border border-border shadow-sm">
+      <MicroLabel>{label}</MicroLabel>
+      <div className="inline-flex bg-white rounded-full p-1 border border-border shadow-sm flex-wrap">
         {options.map((o) => {
           const active = o.value === value;
           return (
-            <button
-              key={o.value}
-              onClick={() => onChange(o.value)}
-              className={cn(
-                "px-5 py-2 text-sm font-bold tracking-wider rounded-full transition-all",
-                active ? "bg-yellow text-ink" : "text-muted-foreground hover:text-ink"
-              )}
-            >
-              {o.label}
-            </button>
+            <button key={o.value} onClick={() => onChange(o.value)} className={cn("px-5 py-2 text-sm font-bold tracking-wider rounded-full transition-all", active ? "bg-yellow text-ink" : "text-muted-foreground hover:text-ink")}>{o.label}</button>
           );
         })}
       </div>
@@ -162,131 +180,39 @@ function Segmented<T extends string>({
   );
 }
 
-function Pill({
-  active, onClick, children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "h-10 min-w-10 px-4 rounded-full text-sm font-bold transition-all border",
-        active
-          ? "bg-yellow border-yellow text-ink shadow-sm"
-          : "bg-white border-border text-ink hover:border-ink"
-      )}
-    >
-      {children}
-    </button>
+    <button onClick={onClick} className={cn("h-10 min-w-10 px-4 rounded-full text-sm font-bold transition-all border", active ? "bg-yellow border-yellow text-ink shadow-sm" : "bg-white border-border text-ink hover:border-ink")}>{children}</button>
   );
 }
 
-function ExerciseCard({ number, title, tip }: { number: number; title: string; tip: string }) {
+function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPlay: () => void }) {
+  const img = publicUrl("exercise-covers", ex.cover_image_url);
+  const hasVideo = ex.video_type !== "none";
   return (
     <article className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow">
       <div className="relative aspect-video bg-ink overflow-hidden">
-        <img
-          src={workoutThumb}
-          alt={title}
-          loading="lazy"
-          width={800}
-          height={512}
-          className="w-full h-full object-cover opacity-80"
-        />
+        {img ? (
+          <img src={img} alt={ex.title} loading="lazy" className="w-full h-full object-cover opacity-90" />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-ink to-ink/70" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <span className="absolute top-3 left-3 bg-yellow text-ink text-xs font-bold px-2.5 py-1 rounded-md tracking-wider">
-          #{String(number).padStart(2, "0")}
+          #{String(index).padStart(2, "0")}
         </span>
-        <button
-          aria-label={`Reproducir ${title}`}
-          className="absolute inset-0 flex items-center justify-center group"
-        >
-          <span className="h-14 w-14 rounded-full bg-yellow flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-            <Play className="h-6 w-6 text-ink fill-ink ml-0.5" />
-          </span>
-        </button>
+        {hasVideo && (
+          <button aria-label={`Reproducir ${ex.title}`} onClick={onPlay} className="absolute inset-0 flex items-center justify-center group">
+            <span className="h-14 w-14 rounded-full bg-yellow flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <Play className="h-6 w-6 text-ink fill-ink ml-0.5" />
+            </span>
+          </button>
+        )}
       </div>
       <div className="p-4">
-        <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">
-          {title}
-        </h3>
-        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{tip}</p>
+        <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">{ex.title}</h3>
+        {ex.tip && <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
       </div>
     </article>
-  );
-}
-
-function SideMenu({
-  onClose, onChoose, activeGender, activeLevel,
-}: {
-  onClose: () => void;
-  onChoose: (g: Gender, lv: number) => void;
-  activeGender: Gender;
-  activeLevel: number;
-}) {
-  const [openGroup, setOpenGroup] = useState<Gender | null>(activeGender);
-
-  return (
-    <aside
-      role="dialog"
-      aria-label="Menú de rutinas"
-      className="fixed top-0 left-0 z-50 h-full w-[85%] max-w-sm bg-ink text-white animate-slide-in shadow-2xl flex flex-col"
-    >
-      <div className="flex items-center justify-between h-14 md:h-16 px-4 border-b border-white/10">
-        <span className="text-display text-lg font-bold tracking-widest">MENÚ</span>
-        <button
-          aria-label="Cerrar menú"
-          onClick={onClose}
-          className="p-2 -mr-2 rounded-md hover:bg-white/10 transition-colors"
-        >
-          <X className="h-6 w-6" />
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto p-2">
-        {(["hombres", "damas"] as Gender[]).map((g) => {
-          const open = openGroup === g;
-          return (
-            <div key={g} className="mb-1">
-              <button
-                onClick={() => setOpenGroup(open ? null : g)}
-                className="w-full flex items-center justify-between px-4 py-3.5 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <span className="text-display font-bold tracking-wider uppercase">
-                  {g}
-                </span>
-                {open ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-              </button>
-              {open && (
-                <ul className="mt-1 mb-2 pl-2">
-                  {LEVELS.map((lv) => {
-                    const isActive = activeGender === g && activeLevel === lv;
-                    return (
-                      <li key={lv}>
-                        <button
-                          onClick={() => onChoose(g, lv)}
-                          className={cn(
-                            "w-full text-left px-4 py-2.5 rounded-md text-sm font-medium tracking-wide transition-colors flex items-center justify-between",
-                            isActive
-                              ? "bg-yellow text-ink"
-                              : "text-white/80 hover:bg-white/10 hover:text-white"
-                          )}
-                        >
-                          <span>Nivel {lv}</span>
-                          {isActive && <span className="text-[10px] font-bold">ACTIVO</span>}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-white/10 text-[11px] uppercase tracking-widest text-white/40">
-        Rutinas · v1.0
-      </div>
-    </aside>
   );
 }

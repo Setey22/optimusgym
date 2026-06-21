@@ -1,0 +1,82 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+export default function AuthPage() {
+  const navigate = useNavigate();
+  const { user, isAdmin, loading } = useAuth();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) navigate(isAdmin ? "/admin" : "/", { replace: true });
+  }, [user, isAdmin, loading, navigate]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: `${window.location.origin}/admin` },
+        });
+        if (error) throw error;
+        toast.success("Cuenta creada. Ya podés iniciar sesión.");
+        setMode("signin");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-ink text-white flex flex-col">
+      <header className="px-4 md:px-8 py-4">
+        <Link to="/" className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm">
+          <ArrowLeft className="h-4 w-4" /> Volver
+        </Link>
+      </header>
+      <main className="flex-1 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white text-ink rounded-2xl p-6 md:p-8 shadow-2xl">
+          <h1 className="text-display text-3xl font-bold uppercase tracking-widest mb-1">
+            {mode === "signin" ? "Iniciar sesión" : "Crear cuenta"}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-6">Acceso de administrador</p>
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="pw">Contraseña</Label>
+              <Input id="pw" type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <Button type="submit" disabled={busy} className="w-full bg-yellow text-ink hover:bg-yellow/90 font-bold">
+              {busy ? "..." : mode === "signin" ? "Entrar" : "Crear cuenta"}
+            </Button>
+          </form>
+          <button
+            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            className="mt-4 w-full text-sm text-muted-foreground hover:text-ink transition-colors"
+          >
+            {mode === "signin" ? "¿No tenés cuenta? Crear una" : "Ya tengo cuenta"}
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
