@@ -21,6 +21,7 @@ export type Database = {
           day: number
           id: string
           position: number
+          repetitions: string | null
           routine_id: string
           tip: string | null
           title: string
@@ -35,6 +36,7 @@ export type Database = {
           day: number
           id?: string
           position?: number
+          repetitions?: string | null
           routine_id: string
           tip?: string | null
           title: string
@@ -49,6 +51,7 @@ export type Database = {
           day?: number
           id?: string
           position?: number
+          repetitions?: string | null
           routine_id?: string
           tip?: string | null
           title?: string
@@ -268,7 +271,7 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions][CompositeTypeName]
     : never
 
 export const Constants = {
