@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 type Exercise = {
   id: string; routine_id: string; day: number; position: number;
-  title: string; tip: string | null; cover_image_url: string | null;
+  title: string; repetitions: string | null; tip: string | null; cover_image_url: string | null;
   video_type: "youtube" | "upload" | "none"; youtube_id: string | null; video_url: string | null;
 };
 
@@ -41,7 +41,9 @@ export default function ExerciseEditor({
 
   async function save() {
     let payload: any = {
-      title: form.title, tip: form.tip,
+      title: form.title,
+      repetitions: form.repetitions?.trim() || null,
+      tip: form.tip,
       cover_image_url: form.cover_image_url,
       video_type: form.video_type,
       youtube_id: null, video_url: form.video_url,
@@ -67,6 +69,14 @@ export default function ExerciseEditor({
           <div>
             <Label>Título</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          </div>
+          <div>
+            <Label>Repeticiones / tiempo</Label>
+            <Input
+              value={form.repetitions ?? ""}
+              onChange={(e) => setForm({ ...form, repetitions: e.target.value })}
+              placeholder="Ej: 4 x 15 o 4 x 20 seg"
+            />
           </div>
           <div>
             <Label>Tip / instrucción</Label>
