@@ -17,6 +17,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user && mode !== "reset") {
@@ -30,12 +31,12 @@ export default function AuthPage() {
 
     try {
       if (mode === "reset") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
+        const redirectTo = new URL("/reset-password", window.location.origin).toString();
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
         if (error) throw error;
 
+        setRecoveryEmail(email);
         toast.success("Te enviamos un email para recuperar la contraseña.");
         setMode("signin");
         return;
@@ -62,6 +63,11 @@ export default function AuthPage() {
     }
   }
 
+  function changeMode(nextMode: AuthMode) {
+    setMode(nextMode);
+    if (nextMode !== "signin") setRecoveryEmail(null);
+  }
+
   return (
     <div className="min-h-screen bg-ink text-white flex flex-col">
       <header className="px-4 md:px-8 py-4">
@@ -79,6 +85,11 @@ export default function AuthPage() {
           <p className="text-sm text-muted-foreground mb-6">
             {mode === "reset" ? "Te enviaremos un link de recuperación al email del admin." : "Acceso de administrador"}
           </p>
+          {recoveryEmail && mode === "signin" && (
+            <div className="mb-5 rounded-xl border border-yellow/50 bg-yellow/15 p-3 text-sm text-ink">
+              Enviamos el link de recuperación a <strong>{recoveryEmail}</strong>. Revisá spam/promociones. Si no llega, hay que revisar SMTP y URLs permitidas en Supabase Auth.
+            </div>
+          )}
           <form onSubmit={submit} className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
@@ -96,14 +107,22 @@ export default function AuthPage() {
           </form>
           {mode === "signin" && (
             <button
-              onClick={() => setMode("reset")}
+              onClick={() => changeMode("reset")}
               className="mt-4 w-full text-sm text-muted-foreground hover:text-ink transition-colors"
             >
               ¿Olvidaste tu contraseña?
             </button>
           )}
+          {mode === "reset" && (
+            <button
+              onClick={() => changeMode("signin")}
+              className="mt-4 w-full text-sm text-muted-foreground hover:text-ink transition-colors"
+            >
+              Volver a iniciar sesión
+            </button>
+          )}
           <button
-            onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+            onClick={() => changeMode(mode === "signup" ? "signin" : "signup")}
             className="mt-3 w-full text-sm text-muted-foreground hover:text-ink transition-colors"
           >
             {mode === "signup" ? "Ya tengo cuenta" : "¿No tenés cuenta? Crear una"}
