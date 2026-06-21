@@ -16,7 +16,7 @@ type Routine = {
 };
 type Exercise = {
   id: string; routine_id: string; day: number; position: number;
-  title: string; tip: string | null; cover_image_url: string | null;
+  title: string; repetitions: string | null; tip: string | null; cover_image_url: string | null;
   video_type: "youtube" | "upload" | "none"; youtube_id: string | null; video_url: string | null;
 };
 
@@ -189,6 +189,8 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
 function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPlay: () => void }) {
   const img = publicUrl("exercise-covers", ex.cover_image_url);
   const hasVideo = ex.video_type !== "none";
+  const repetitions = ex.repetitions?.trim();
+
   return (
     <article className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow">
       <div className="relative aspect-video bg-ink overflow-hidden">
@@ -211,7 +213,13 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
       </div>
       <div className="p-4">
         <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">{ex.title}</h3>
-        {ex.tip && <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
+        {repetitions && (
+          <div className="mt-3 rounded-xl bg-ink px-4 py-3 text-white">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-yellow">Repeticiones</div>
+            <div className="mt-1 text-display text-2xl font-bold leading-none">{repetitions}</div>
+          </div>
+        )}
+        {ex.tip && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
       </div>
     </article>
   );
