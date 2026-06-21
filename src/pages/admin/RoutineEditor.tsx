@@ -20,7 +20,7 @@ type Routine = {
 };
 type Exercise = {
   id: string; routine_id: string; day: number; position: number;
-  title: string; tip: string | null; cover_image_url: string | null;
+  title: string; repetitions: string | null; tip: string | null; cover_image_url: string | null;
   video_type: "youtube" | "upload" | "none"; youtube_id: string | null; video_url: string | null;
 };
 
@@ -169,6 +169,7 @@ export default function RoutineEditor() {
         <ul className="space-y-2">
           {dayExercises.map((ex, i) => {
             const img = publicUrl("exercise-covers", ex.cover_image_url);
+            const repetitions = ex.repetitions?.trim();
             return (
               <li key={ex.id} className="bg-white rounded-xl border border-border p-3 flex items-center gap-3">
                 <div className="w-20 h-14 bg-surface rounded-md overflow-hidden flex-shrink-0">
@@ -177,6 +178,7 @@ export default function RoutineEditor() {
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-muted-foreground">#{i + 1} · {ex.video_type === "none" ? "Sin video" : ex.video_type}</div>
                   <div className="font-semibold truncate">{ex.title}</div>
+                  {repetitions && <div className="mt-0.5 text-xs font-bold text-ink">Repeticiones: {repetitions}</div>}
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => move(ex, -1)} disabled={i === 0}><ArrowUp className="h-4 w-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={() => move(ex, 1)} disabled={i === dayExercises.length - 1}><ArrowDown className="h-4 w-4"/></Button>
