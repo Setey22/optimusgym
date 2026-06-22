@@ -64,13 +64,23 @@ begin
     insert into public.routines (gender, level, name, description, days_count, is_published, sort_order)
     values ('hombres', 1, 'Hombres Nivel 1', 'Rutina inicial para hombres - Dia 1.', 1, true, 1)
     returning id into target_routine_id;
-  else
-    update public.routines
-    set days_count = greatest(days_count, 1),
-        is_published = true,
-        updated_at = now()
-    where id = target_routine_id;
   end if;
+
+  update public.routines
+  set is_published = false,
+      updated_at = now()
+  where gender = 'hombres'
+    and level = 1
+    and id <> target_routine_id;
+
+  update public.routines
+  set name = 'Hombres Nivel 1',
+      description = 'Rutina inicial para hombres - Dia 1.',
+      days_count = greatest(days_count, 1),
+      sort_order = 1,
+      is_published = true,
+      updated_at = now()
+  where id = target_routine_id;
 
   delete from public.exercises
   where routine_id = target_routine_id
