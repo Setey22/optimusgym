@@ -36,23 +36,37 @@ export default function Index() {
     let cancel = false;
     (async () => {
       setLoading(true);
-      const { data: r } = await supabase
+      const { data: routines, error: routineError } = await supabase
         .from("routines")
         .select("*")
         .eq("gender", gender).eq("level", level)
         .eq("is_published", true)
-        .maybeSingle();
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .limit(1);
+
       if (cancel) return;
-      setRoutine((r as Routine) ?? null);
+
+      if (routineError) {
+        console.error("Error loading routine", routineError);
+        setRoutine(null);
+        setExercises([]);
+        setLoading(false);
+        return;
+      }
+
+      const r = (routines?.[0] as Routine | undefined) ?? null;
+      setRoutine(r);
       if (r) {
-        const { data: ex } = await supabase
+        const { data: ex, error: exercisesError } = await supabase
           .from("exercises").select("*")
           .eq("routine_id", r.id).order("day").order("position");
+        if (exercisesError) console.error("Error loading exercises", exercisesError);
         if (!cancel) setExercises((ex ?? []) as Exercise[]);
       } else {
         setExercises([]);
       }
-      setLoading(false);
+      if (!cancel) setLoading(false);
     })();
     return () => { cancel = true; };
   }, [gender, level]);
