@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock3, Menu, Play, ShieldCheck } from "lucide-react";
+import { Menu, Play, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/media";
@@ -308,21 +308,13 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
       <div className="p-4">
         <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">{ex.title}</h3>
         {repetitions && (
-          <div className="mt-4 rounded-2xl border border-ink/10 bg-surface p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="h-10 w-10 rounded-full bg-yellow text-ink flex items-center justify-center shrink-0">
-                  <Clock3 className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Cuánto hacer</div>
-                  <div className="text-display text-2xl font-bold leading-none text-ink mt-1">{repetitions}</div>
-                </div>
-              </div>
-              <span className="rounded-full bg-ink px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shrink-0">
-                Objetivo
-              </span>
-            </div>
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Repeticiones
+            </span>
+            <span className="rounded-full bg-yellow px-4 py-1.5 text-display text-xl font-bold leading-none text-ink shadow-sm">
+              {repetitions}
+            </span>
           </div>
         )}
         {ex.tip && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
