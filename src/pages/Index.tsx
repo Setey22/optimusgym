@@ -21,6 +21,7 @@ type Exercise = {
 };
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7];
+const MIN_PUBLIC_DAYS = 2;
 
 export default function Index() {
   const { user, isAdmin, signOut } = useAuth();
@@ -38,6 +39,7 @@ export default function Index() {
     (async () => {
       setLoading(true);
       setLoadError(null);
+      setDay(1);
       const { data: routines, error: routineError } = await supabase
         .from("routines")
         .select("*")
@@ -77,14 +79,16 @@ export default function Index() {
     return () => { cancel = true; };
   }, [gender, level]);
 
-  useEffect(() => { if (routine && day > routine.days_count) setDay(1); }, [routine, day]);
+  const dayTabs = routine
+    ? Array.from({ length: Math.max(routine.days_count, MIN_PUBLIC_DAYS) }, (_, i) => i + 1)
+    : Array.from({ length: MIN_PUBLIC_DAYS }, (_, i) => i + 1);
+
+  useEffect(() => { if (day > dayTabs.length) setDay(1); }, [day, dayTabs.length]);
 
   const dayExercises = useMemo(
     () => exercises.filter((e) => e.day === day).sort((a, b) => a.position - b.position),
     [exercises, day]
   );
-
-  const dayTabs = routine ? Array.from({ length: routine.days_count }, (_, i) => i + 1) : [1];
 
   return (
     <div className="min-h-screen bg-surface">
@@ -123,20 +127,20 @@ export default function Index() {
               ))}
             </div>
           </div>
-          {routine && routine.days_count > 1 && (
-            <Segmented label="Día" options={dayTabs.map((d) => ({ value: String(d), label: `DÍA ${d}` }))} value={String(day)} onChange={(v) => setDay(Number(v))} />
-          )}
-        </section>
-
-        {routine && (
-          <div className="mb-5">
-            <h2 className="text-display text-2xl md:text-3xl font-bold uppercase">{routine.name}</h2>
-            {routine.description && <p className="text-sm text-muted-foreground mt-1">{routine.description}</p>}
-            <div className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">
-              {dayExercises.length} ejercicio{dayExercises.length === 1 ? "" : "s"}
+          <div>
+            <MicroLabel>Día</MicroLabel>
+            <div className="flex flex-wrap gap-2">
+              {dayTabs.map((d) => (
+                <Pill key={d} active={day === d} onClick={() => setDay(d)}>Día {d}</Pill>
+              ))}
             </div>
+            {routine && (
+              <div className="text-xs text-muted-foreground mt-3 uppercase tracking-widest">
+                {dayExercises.length} ejercicio{dayExercises.length === 1 ? "" : "s"}
+              </div>
+            )}
           </div>
-        )}
+        </section>
 
         {loading ? (
           <div className="text-muted-foreground">Cargando…</div>
