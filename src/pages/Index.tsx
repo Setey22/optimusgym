@@ -305,14 +305,13 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
           </button>
         )}
       </div>
-      <div className="p-4">
-        <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">{ex.title}</h3>
+      <div className="px-4 pt-3 pb-4">
+        <h3 className="text-display text-2xl font-black uppercase text-ink leading-[0.95] tracking-tight">
+          {ex.title}
+        </h3>
         {repetitions && (
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Repeticiones
-            </span>
-            <span className="rounded-full bg-yellow px-4 py-1.5 text-display text-xl font-bold leading-none text-ink shadow-sm">
+          <div className="mt-2 flex items-center">
+            <span className="rounded-full bg-yellow px-4 py-1.5 text-display text-xl font-black leading-none text-ink shadow-sm">
               {repetitions}
             </span>
           </div>
