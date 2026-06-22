@@ -21,7 +21,6 @@ export type Database = {
           day: number
           id: string
           position: number
-          repetitions: string | null
           routine_id: string
           tip: string | null
           title: string
@@ -36,7 +35,6 @@ export type Database = {
           day: number
           id?: string
           position?: number
-          repetitions?: string | null
           routine_id: string
           tip?: string | null
           title: string
@@ -51,7 +49,6 @@ export type Database = {
           day?: number
           id?: string
           position?: number
-          repetitions?: string | null
           routine_id?: string
           tip?: string | null
           title?: string
