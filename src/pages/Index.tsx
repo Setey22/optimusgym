@@ -30,12 +30,14 @@ export default function Index() {
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<Exercise | null>(null);
 
   useEffect(() => {
     let cancel = false;
     (async () => {
       setLoading(true);
+      setLoadError(null);
       const { data: routines, error: routineError } = await supabase
         .from("routines")
         .select("*")
@@ -51,6 +53,7 @@ export default function Index() {
         console.error("Error loading routine", routineError);
         setRoutine(null);
         setExercises([]);
+        setLoadError("No se pudo cargar la rutina publicada. Revisá los permisos de lectura en Supabase.");
         setLoading(false);
         return;
       }
@@ -61,7 +64,10 @@ export default function Index() {
         const { data: ex, error: exercisesError } = await supabase
           .from("exercises").select("*")
           .eq("routine_id", r.id).order("day").order("position");
-        if (exercisesError) console.error("Error loading exercises", exercisesError);
+        if (exercisesError) {
+          console.error("Error loading exercises", exercisesError);
+          if (!cancel) setLoadError("No se pudieron cargar los ejercicios. Revisá los permisos de lectura en Supabase.");
+        }
         if (!cancel) setExercises((ex ?? []) as Exercise[]);
       } else {
         setExercises([]);
@@ -134,6 +140,8 @@ export default function Index() {
 
         {loading ? (
           <div className="text-muted-foreground">Cargando…</div>
+        ) : loadError ? (
+          <ErrorState message={loadError} />
         ) : !routine ? (
           <EmptyState />
         ) : dayExercises.length === 0 ? (
@@ -170,6 +178,15 @@ function EmptyState() {
     <div className="bg-white rounded-2xl border border-border p-10 text-center">
       <h3 className="text-display text-xl font-bold uppercase">Sin rutina disponible</h3>
       <p className="text-sm text-muted-foreground mt-2">Todavía no hay una rutina publicada para esta combinación.</p>
+    </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-border p-10 text-center">
+      <h3 className="text-display text-xl font-bold uppercase text-ink">No se pudo cargar</h3>
+      <p className="text-sm text-muted-foreground mt-2">{message}</p>
     </div>
   );
 }
