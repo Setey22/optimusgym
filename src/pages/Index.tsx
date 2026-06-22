@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Play, Menu, ShieldCheck } from "lucide-react";
+import { Clock3, Menu, Play, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/media";
@@ -23,6 +23,41 @@ type Exercise = {
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7];
 const MIN_PUBLIC_DAYS = 2;
+
+const DAY_2_PRESET = [
+  { title: "Subidas al step", repetitions: "4x20", youtube_id: "d7NnSFMIdgA" },
+  { title: "Abdomen cruzados", repetitions: "4x12", youtube_id: "yi9t1VFN3JU" },
+  { title: "Elevación piernas", repetitions: "4x12", youtube_id: "l_N4S4S68Sg" },
+  { title: "Hombros trapecios encogimiento", repetitions: "4x12", youtube_id: "gT8CenL_g7g" },
+  { title: "Vuelos laterales sentado", repetitions: "3x12", youtube_id: "Kz6_L7_X_uM" },
+  { title: "Vuelos frontales con disco", repetitions: "4x12", youtube_id: "E8SOnX7pccI" },
+  { title: "Tríceps 1 mano extensión", repetitions: "4x10", youtube_id: "u8w3Us_FWb4" },
+  { title: "Espalda remo 1 mano", repetitions: "4x10", youtube_id: "own3uEE4wP8" },
+  { title: "Espalda remo Dorian", repetitions: "4x10", youtube_id: "Zf0g-A_yN9k" },
+  { title: "Bailarina (aductor)", repetitions: "4x10", youtube_id: "F0S1_WvM58s" },
+  { title: "Pecho Hamer 45º", repetitions: "3x10", youtube_id: "hkU6fSHcslw" },
+  { title: "Bíceps sentado con mancuernas", repetitions: "4x12", youtube_id: "DUTcx5B-ddk" },
+];
+
+function buildDayTwoPresetExercises(routineId: string): Exercise[] {
+  return DAY_2_PRESET.map((ex, index) => ({
+    id: `day-2-preset-${index + 1}`,
+    routine_id: routineId,
+    day: 2,
+    position: index + 1,
+    title: ex.title,
+    repetitions: ex.repetitions,
+    tip: null,
+    cover_image_url: null,
+    video_type: "youtube",
+    youtube_id: ex.youtube_id,
+    video_url: null,
+  }));
+}
+
+function shouldUsePresetDayTwo(gender: Gender, level: number) {
+  return gender === "hombres" && level === 1;
+}
 
 export default function Index() {
   const { user, isAdmin, signOut } = useAuth();
@@ -87,10 +122,15 @@ export default function Index() {
 
   useEffect(() => { if (day > dayTabs.length) setDay(1); }, [day, dayTabs.length]);
 
-  const dayExercises = useMemo(
-    () => exercises.filter((e) => e.day === day).sort((a, b) => a.position - b.position),
-    [exercises, day]
-  );
+  const dayExercises = useMemo(() => {
+    if (routine && day === 2 && shouldUsePresetDayTwo(gender, level)) {
+      return buildDayTwoPresetExercises(routine.id);
+    }
+
+    return exercises
+      .filter((e) => e.day === day)
+      .sort((a, b) => a.position - b.position);
+  }, [exercises, day, routine, gender, level]);
 
   const summary = `${gender === "hombres" ? "HOMBRES" : "DAMAS"} · NIVEL ${level} · DÍA ${day}`;
 
@@ -268,8 +308,21 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
       <div className="p-4">
         <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">{ex.title}</h3>
         {repetitions && (
-          <div className="mt-4 rounded-xl bg-yellow px-4 py-3 text-center text-display text-3xl font-bold leading-none text-ink">
-            {repetitions}
+          <div className="mt-4 rounded-2xl border border-ink/10 bg-surface p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="h-10 w-10 rounded-full bg-yellow text-ink flex items-center justify-center shrink-0">
+                  <Clock3 className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Cuánto hacer</div>
+                  <div className="text-display text-2xl font-bold leading-none text-ink mt-1">{repetitions}</div>
+                </div>
+              </div>
+              <span className="rounded-full bg-ink px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shrink-0">
+                Objetivo
+              </span>
+            </div>
           </div>
         )}
         {ex.tip && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
