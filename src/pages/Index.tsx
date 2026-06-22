@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Play, LogIn, ShieldCheck, Timer } from "lucide-react";
+import { Play, LogIn, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/media";
@@ -245,19 +245,8 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
       <div className="p-4">
         <h3 className="text-display font-bold text-lg uppercase text-ink leading-tight">{ex.title}</h3>
         {repetitions && (
-          <div className="mt-4 rounded-2xl border border-ink/10 bg-surface p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-yellow text-ink shadow-sm">
-                <Timer className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Cuánto hacer</div>
-                <div className="mt-1 text-display text-3xl font-bold leading-none text-ink">{repetitions}</div>
-              </div>
-              <div className="rounded-full bg-ink px-3 py-1 text-[10px] font-black uppercase tracking-wider text-yellow">
-                Objetivo
-              </div>
-            </div>
+          <div className="mt-4 rounded-xl bg-yellow px-4 py-3 text-center text-display text-3xl font-bold leading-none text-ink">
+            {repetitions}
           </div>
         )}
         {ex.tip && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
