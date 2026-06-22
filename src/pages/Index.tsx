@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Play, LogIn, ShieldCheck } from "lucide-react";
+import { Play, Menu, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import VideoPlayerDialog from "@/components/VideoPlayerDialog";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type Gender = "hombres" | "damas";
 type Routine = {
@@ -33,6 +34,7 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<Exercise | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -90,57 +92,59 @@ export default function Index() {
     [exercises, day]
   );
 
+  const summary = `${gender === "hombres" ? "HOMBRES" : "DAMAS"} · NIVEL ${level} · DÍA ${day}`;
+
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface flex flex-col">
       <header className="sticky top-0 z-30 bg-ink text-white">
-        <div className="flex items-center h-14 md:h-16 px-4 md:px-8">
+        <div className="flex items-center h-14 md:h-16 px-4 md:px-8 gap-3">
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" aria-label="Abrir menú">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[88vw] max-w-sm bg-surface">
+              <SheetHeader>
+                <SheetTitle className="text-display tracking-widest">FILTROS</SheetTitle>
+              </SheetHeader>
+              <div className="space-y-6 mt-6">
+                <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
+                <div>
+                  <MicroLabel>Nivel</MicroLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {LEVELS.map((lv) => (
+                      <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <MicroLabel>Día</MicroLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {dayTabs.map((d) => (
+                      <Pill key={d} active={day === d} onClick={() => setDay(d)}>Día {d}</Pill>
+                    ))}
+                  </div>
+                </div>
+                <Button className="w-full bg-yellow text-ink hover:bg-yellow/90 font-bold" onClick={() => setMenuOpen(false)}>
+                  Ver ejercicios
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
           <h1 className="text-display text-xl md:text-2xl font-bold tracking-widest">RUTINAS</h1>
-          <div className="ml-auto flex items-center gap-2">
-            {isAdmin && (
-              <Link to="/admin">
-                <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
-                  <ShieldCheck className="h-4 w-4" /> Admin
-                </Button>
-              </Link>
-            )}
-            {user ? (
-              <Button size="sm" variant="ghost" onClick={signOut} className="text-white hover:bg-white/10 hover:text-white">Salir</Button>
-            ) : (
-              <Link to="/auth">
-                <Button size="sm" className="bg-yellow text-ink hover:bg-yellow/90 font-bold">
-                  <LogIn className="h-4 w-4" /> Iniciar sesión
-                </Button>
-              </Link>
-            )}
+          <div className="ml-auto text-[11px] font-semibold uppercase tracking-widest text-white/60 truncate">
+            {summary}
           </div>
         </div>
       </header>
 
-      <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto">
-        <section className="space-y-4 mb-8">
-          <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
-          <div>
-            <MicroLabel>Nivel</MicroLabel>
-            <div className="flex flex-wrap gap-2">
-              {LEVELS.map((lv) => (
-                <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
-              ))}
-            </div>
+      <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto w-full flex-1">
+        {routine && !loading && !loadError && (
+          <div className="text-xs text-muted-foreground mb-4 uppercase tracking-widest">
+            {dayExercises.length} ejercicio{dayExercises.length === 1 ? "" : "s"}
           </div>
-          <div>
-            <MicroLabel>Día</MicroLabel>
-            <div className="flex flex-wrap gap-2">
-              {dayTabs.map((d) => (
-                <Pill key={d} active={day === d} onClick={() => setDay(d)}>Día {d}</Pill>
-              ))}
-            </div>
-            {routine && (
-              <div className="text-xs text-muted-foreground mt-3 uppercase tracking-widest">
-                {dayExercises.length} ejercicio{dayExercises.length === 1 ? "" : "s"}
-              </div>
-            )}
-          </div>
-        </section>
+        )}
 
         {loading ? (
           <div className="text-muted-foreground">Cargando…</div>
@@ -159,11 +163,26 @@ export default function Index() {
             ))}
           </div>
         )}
-
-        <footer className="mt-12 pb-8 text-center text-xs text-muted-foreground uppercase tracking-widest">
-          Entrena con foco · Sin distracciones
-        </footer>
       </main>
+
+      <footer className="mt-12 pb-6 pt-4 text-center text-[10px] text-muted-foreground/60 uppercase tracking-widest space-y-2">
+        <div>Entrena con foco · Sin distracciones</div>
+        <div className="flex items-center justify-center gap-3">
+          {isAdmin ? (
+            <>
+              <Link to="/admin" className="inline-flex items-center gap-1 hover:text-muted-foreground transition-colors">
+                <ShieldCheck className="h-3 w-3" /> Admin
+              </Link>
+              <span>·</span>
+              <button onClick={signOut} className="hover:text-muted-foreground transition-colors">Salir</button>
+            </>
+          ) : user ? (
+            <button onClick={signOut} className="hover:text-muted-foreground transition-colors">Salir</button>
+          ) : (
+            <Link to="/auth" className="hover:text-muted-foreground transition-colors">·</Link>
+          )}
+        </div>
+      </footer>
 
       <VideoPlayerDialog
         open={!!playing}
