@@ -32,10 +32,26 @@ export default {
       keyframes: {
         "slide-in": { from: { transform: "translateX(-100%)" }, to: { transform: "translateX(0)" } },
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        "celebration-pop": {
+          "0%": { opacity: "0", transform: "scale(0.85) translateY(12px)" },
+          "60%": { opacity: "1", transform: "scale(1.03) translateY(-4px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
+        },
+        "trophy-bounce": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        "spotlight-rotate": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "slide-in": "slide-in 0.25s ease-out",
         "fade-in": "fade-in 0.2s ease-out",
+        "celebration-pop": "celebration-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "trophy-bounce": "trophy-bounce 1.2s ease-in-out infinite",
+        "spotlight-rotate": "spotlight-rotate 8s linear infinite",
       },
     },
   },

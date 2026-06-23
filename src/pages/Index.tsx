@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Menu, Play, RotateCcw, ShieldCheck, Trophy } from "lucide-react";
+import { Check, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,7 @@ import VideoPlayerDialog from "@/components/VideoPlayerDialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CompletionCelebration } from "@/components/CompletionCelebration";
 
 type Gender = "hombres" | "damas";
 type Routine = {
@@ -240,15 +241,7 @@ export default function Index() {
       <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto w-full flex-1">
         {routine && !loading && !loadError && total > 0 && (
           <div className="mb-5">
-            {allDone && (
-              <div className="mb-3 rounded-2xl bg-ink text-white px-5 py-4 flex items-center gap-3 shadow-md">
-                <Trophy className="h-6 w-6 text-yellow shrink-0" />
-                <div>
-                  <div className="text-display text-lg font-black uppercase tracking-wider leading-none">¡Día completado!</div>
-                  <div className="text-xs text-white/70 mt-1">Gran trabajo. Descansá y volvé mañana.</div>
-                </div>
-              </div>
-            )}
+            {allDone && <CompletionCelebration />}
             <div className="flex items-center gap-3">
               <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                 {count} / {total} · {pct}%
