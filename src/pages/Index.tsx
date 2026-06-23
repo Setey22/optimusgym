@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, Play, ShieldCheck } from "lucide-react";
+import { Check, Menu, Play, RotateCcw, ShieldCheck, Trophy } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { publicUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import VideoPlayerDialog from "@/components/VideoPlayerDialog";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type Gender = "hombres" | "damas";
@@ -57,6 +59,59 @@ function buildDayTwoPresetExercises(routineId: string): Exercise[] {
 
 function shouldUsePresetDayTwo(gender: Gender, level: number) {
   return gender === "hombres" && level === 1;
+}
+
+function progressKey(gender: Gender, level: number, day: number) {
+  return `optimus:progress:${gender}:${level}:${day}`;
+}
+
+function useDayProgress(gender: Gender, level: number, day: number, ids: string[]) {
+  const key = progressKey(gender, level, day);
+  const [done, setDone] = useState<Set<string>>(new Set());
+  const celebratedRef = useRef<Set<string>>(new Set());
+
+  // load when key changes
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      const arr: string[] = raw ? JSON.parse(raw) : [];
+      setDone(new Set(arr));
+    } catch {
+      setDone(new Set());
+    }
+  }, [key]);
+
+  const total = ids.length;
+  const count = useMemo(() => ids.filter((id) => done.has(id)).length, [ids, done]);
+  const allDone = total > 0 && count === total;
+
+  // celebrate once per key per session
+  useEffect(() => {
+    if (allDone && !celebratedRef.current.has(key)) {
+      celebratedRef.current.add(key);
+      toast.success("¡Día completado! 💪", {
+        description: "Excelente trabajo. Disfrutá el descanso.",
+      });
+    }
+    if (!allDone) celebratedRef.current.delete(key);
+  }, [allDone, key]);
+
+  const persist = (next: Set<string>) => {
+    setDone(next);
+    try {
+      localStorage.setItem(key, JSON.stringify(Array.from(next)));
+    } catch { /* noop */ }
+  };
+
+  const toggle = (id: string) => {
+    const next = new Set(done);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    persist(next);
+  };
+
+  const reset = () => persist(new Set());
+
+  return { done, toggle, reset, allDone, count, total };
 }
 
 export default function Index() {
@@ -126,11 +181,14 @@ export default function Index() {
     if (routine && day === 2 && shouldUsePresetDayTwo(gender, level)) {
       return buildDayTwoPresetExercises(routine.id);
     }
-
     return exercises
       .filter((e) => e.day === day)
       .sort((a, b) => a.position - b.position);
   }, [exercises, day, routine, gender, level]);
+
+  const ids = useMemo(() => dayExercises.map((e) => e.id), [dayExercises]);
+  const { done, toggle, reset, allDone, count, total } = useDayProgress(gender, level, day, ids);
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
 
   const summary = `${gender === "hombres" ? "HOMBRES" : "DAMAS"} · NIVEL ${level} · DÍA ${day}`;
 
@@ -180,9 +238,30 @@ export default function Index() {
       </header>
 
       <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto w-full flex-1">
-        {routine && !loading && !loadError && (
-          <div className="text-xs text-muted-foreground mb-4 uppercase tracking-widest">
-            {dayExercises.length} ejercicio{dayExercises.length === 1 ? "" : "s"}
+        {routine && !loading && !loadError && total > 0 && (
+          <div className="mb-5">
+            {allDone && (
+              <div className="mb-3 rounded-2xl bg-ink text-white px-5 py-4 flex items-center gap-3 shadow-md">
+                <Trophy className="h-6 w-6 text-yellow shrink-0" />
+                <div>
+                  <div className="text-display text-lg font-black uppercase tracking-wider leading-none">¡Día completado!</div>
+                  <div className="text-xs text-white/70 mt-1">Gran trabajo. Descansá y volvé mañana.</div>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                {count} / {total} · {pct}%
+              </div>
+              <Progress value={pct} className="h-2 flex-1 bg-white" />
+              <button
+                onClick={reset}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground hover:text-ink transition-colors"
+                aria-label="Reiniciar progreso del día"
+              >
+                <RotateCcw className="h-3 w-3" /> Reiniciar
+              </button>
+            </div>
           </div>
         )}
 
@@ -199,7 +278,14 @@ export default function Index() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {dayExercises.map((ex, i) => (
-              <ExerciseCard key={ex.id} index={i + 1} ex={ex} onPlay={() => setPlaying(ex)} />
+              <ExerciseCard
+                key={ex.id}
+                index={i + 1}
+                ex={ex}
+                done={done.has(ex.id)}
+                onToggle={() => toggle(ex.id)}
+                onPlay={() => setPlaying(ex)}
+              />
             ))}
           </div>
         )}
@@ -280,13 +366,18 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPlay: () => void }) {
+function ExerciseCard({
+  index, ex, done, onToggle, onPlay,
+}: { index: number; ex: Exercise; done: boolean; onToggle: () => void; onPlay: () => void }) {
   const img = publicUrl("exercise-covers", ex.cover_image_url);
   const hasVideo = ex.video_type !== "none";
   const repetitions = ex.repetitions?.trim();
 
   return (
-    <article className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow">
+    <article className={cn(
+      "bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all relative",
+      done && "opacity-75 ring-2 ring-emerald-500"
+    )}>
       <div className="relative aspect-video bg-ink overflow-hidden">
         {img ? (
           <img src={img} alt={ex.title} loading="lazy" className="w-full h-full object-cover opacity-90" />
@@ -297,6 +388,21 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
         <span className="absolute top-3 left-3 bg-yellow text-ink text-xs font-bold px-2.5 py-1 rounded-md tracking-wider">
           #{String(index).padStart(2, "0")}
         </span>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          aria-label={done ? "Marcar como pendiente" : "Marcar como hecho"}
+          aria-pressed={done}
+          className={cn(
+            "absolute top-3 right-3 z-10 h-9 w-9 rounded-full flex items-center justify-center border-2 transition-all shadow-md",
+            done
+              ? "bg-emerald-500 border-emerald-500 text-white"
+              : "bg-white/90 border-white text-ink hover:bg-white"
+          )}
+        >
+          <Check className={cn("h-5 w-5", !done && "opacity-40")} />
+        </button>
+
         {hasVideo && (
           <button aria-label={`Reproducir ${ex.title}`} onClick={onPlay} className="absolute inset-0 flex items-center justify-center group">
             <span className="h-14 w-14 rounded-full bg-yellow flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
@@ -306,14 +412,20 @@ function ExerciseCard({ index, ex, onPlay }: { index: number; ex: Exercise; onPl
         )}
       </div>
       <div className="px-4 pt-3 pb-4">
-        <h3 className="text-display text-2xl font-black uppercase text-ink leading-[0.95] tracking-tight">
+        <h3 className={cn(
+          "text-display text-2xl font-black uppercase text-ink leading-[0.95] tracking-tight",
+          done && "line-through decoration-emerald-500/60"
+        )}>
           {ex.title}
         </h3>
         {repetitions && (
-          <div className="mt-2 flex items-center">
+          <div className="mt-2 flex items-center gap-2">
             <span className="rounded-full bg-yellow px-4 py-1.5 text-display text-xl font-black leading-none text-ink shadow-sm">
               {repetitions}
             </span>
+            {done && (
+              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600">Hecho</span>
+            )}
           </div>
         )}
         {ex.tip && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}

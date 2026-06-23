@@ -1,62 +1,32 @@
-# Diagnóstico real
+## Qué se cambia
 
-Verifiqué directamente contra el proyecto Supabase `zicurmdhggnqcxsskhtq` (el mismo al que apunta `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` del `.env`). La conexión de Lovable **es la correcta**. El problema es otro:
+Solo frontend, en `src/pages/Index.tsx` y la tarjeta `ExerciseCard`. No se toca la base de datos.
 
-### 1. La base está prácticamente vacía
-Resultado de la consulta de verificación que pediste:
+### 1. Texto de las repeticiones
+Reviso las tarjetas: ya no aparece la palabra "Repeticiones", solo el valor dentro de la píldora amarilla (ej. `5 min`, `4 x 20 seg`, `4 x 12`). Se mantiene tal cual, sin etiqueta.
 
-```
-id                                   | name          | gender  | level | is_published | ejercicios_dia_1
-1f61b3b1-b5da-41e3-b971-e91ceb46830c | Nueva rutina  | hombres | 1     | true         | 0
-```
+### 2. Check por ejercicio
+- Cada tarjeta suma un botón circular de check arriba a la derecha (sobre la imagen) y un estado "Hecho" cuando está marcado.
+- Al marcar, la tarjeta baja levemente la opacidad y muestra un tilde verde, sin ocultar el contenido.
+- Tap en el check no dispara el play del video.
 
-- Hay **1 sola rutina** (creada desde el admin, llamada "Nueva rutina", `days_count = 1`).
-- La tabla `public.exercises` está **vacía** (0 filas en total).
-- Los 13 ejercicios que decís haber cargado **no están en este proyecto**. O el SQL se corrió contra otra base, o falló silenciosamente, o se hizo sobre otra `routine_id`.
+### 3. Barra de progreso del día
+- Encima de la grilla aparece una barra fina con `X de N completados` y porcentaje.
+- Avanza en tiempo real al marcar / desmarcar.
+- Botón sutil "Reiniciar día" al lado para limpiar los checks del día actual.
 
-### 2. La columna `repetitions` no existe
-`information_schema.columns` para `public.exercises` devuelve:
-`id, routine_id, day, position, title, tip, cover_image_url, video_type, youtube_id, video_url, created_at, updated_at`.
+### 4. Felicitación al completar
+- Cuando todos los ejercicios del día quedan marcados, aparece un cartel (banner sticky arriba de la grilla) con un mensaje tipo "¡DÍA COMPLETADO!" y un emoji/ícono.
+- Una sola vez por sesión por día se dispara un `toast` celebratorio para no ser invasivo.
 
-No hay `repetitions`. Por eso:
-- El front (`Index.tsx`) y el admin (`RoutineEditor.tsx` / `ExerciseEditor.tsx`) ya leen/escriben `ex.repetitions`, pero **cualquier INSERT/UPDATE que incluya `repetitions` falla** con error de columna inexistente.
-- En la app pública no se ve nada de "4 x 15" porque ni la columna ni los datos existen.
+### 5. Persistencia
+- Se guarda en `localStorage` con clave `optimus:progress:{gender}:{level}:{day}` un array con los IDs marcados.
+- Al cambiar género / nivel / día, el progreso se carga del storage de esa combinación (cada día tiene su propio progreso, no se mezcla).
+- No requiere login ni base de datos.
 
-### 3. RLS y permisos están OK
-- `routines`: lectura pública si `is_published = true`, admins gestionan todo.
-- `exercises`: lectura pública si la rutina padre está publicada, admins gestionan todo.
-- GRANTs presentes para `anon`, `authenticated`, `service_role`.
-- Los network logs confirman 200 OK en `/rest/v1/routines` y `/rest/v1/exercises` — devuelven `[]` simplemente porque no hay filas.
+## Detalles técnicos
 
-### 4. Conclusión
-No hay bug de conexión, ni de RLS, ni de keys, ni de código de consulta. Faltan dos cosas concretas: **la columna `repetitions`** y **los 13 ejercicios reales**.
-
----
-
-# Plan de corrección
-
-### Paso A — Migración: agregar columna `repetitions`
-```sql
-ALTER TABLE public.exercises
-  ADD COLUMN IF NOT EXISTS repetitions text;
-```
-Con esto el admin puede guardar/editar ejercicios sin error, y el front muestra el bloque amarillo "Repeticiones" cuando hay valor.
-
-### Paso B — Cargar los 13 ejercicios de Hombres / Nivel 1 / Día 1
-Acá necesito tu ayuda porque no tengo el contenido real. Dos opciones:
-
-1. **Pegame el SQL** (o la lista título + repeticiones + tip + video) de los 13 ejercicios y los inserto vía `supabase--insert` apuntando al `routine_id = 1f61b3b1-b5da-41e3-b971-e91ceb46830c`.
-2. **Los cargás desde el panel admin** (`/admin` → la rutina ya existe) una vez aplicada la migración del Paso A.
-
-### Paso C — Verificación final
-Después de A + B vuelvo a correr la consulta esperada y confirmo:
-- 1 rutina publicada para hombres nivel 1.
-- `ejercicios_dia_1 = 13`.
-- En `/` con HOMBRES + Nivel 1 se ven las 13 tarjetas con su campo "Repeticiones".
-- En `/admin` el guardado de un ejercicio con `repetitions` no devuelve error.
-
----
-
-**Necesito que me confirmes:**
-- ¿Avanzo con el Paso A (migración de `repetitions`) ahora?
-- Para el Paso B, ¿me pasás el SQL/datos de los 13 ejercicios o preferís cargarlos vos por el admin?
+- Nuevo hook local `useDayProgress(gender, level, day, exerciseIds)` en el mismo archivo que devuelve `{ done: Set<string>, toggle, reset, allDone, count, total }`.
+- `ExerciseCard` recibe `done` y `onToggle` por props.
+- Uso del componente `Progress` ya existente en `src/components/ui/progress.tsx` y `toast` de `sonner` (ya usado en admin).
+- Sin cambios de esquema, migraciones, ni RLS.
