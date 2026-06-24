@@ -246,7 +246,9 @@ export default function Index() {
                 <SheetTitle className="text-display tracking-widest">FILTROS</SheetTitle>
               </SheetHeader>
               <div className="space-y-6 mt-6">
-                <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
+                {!lockedGender && (
+                  <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
+                )}
                 <div>
                   <MicroLabel>Nivel</MicroLabel>
                   <div className="flex flex-wrap gap-2">
