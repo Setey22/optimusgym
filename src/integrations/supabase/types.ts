@@ -70,6 +70,39 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          gender: Database["public"]["Enums"]["routine_gender"] | null
+          invited_by: string | null
+          level: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          gender?: Database["public"]["Enums"]["routine_gender"] | null
+          invited_by?: string | null
+          level?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          gender?: Database["public"]["Enums"]["routine_gender"] | null
+          invited_by?: string | null
+          level?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       routines: {
         Row: {
           cover_image_url: string | null
@@ -145,6 +178,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin_or_super: { Args: { _uid: string }; Returns: boolean }
+      is_superadmin: { Args: { _uid: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "superadmin" | "client"
