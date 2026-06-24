@@ -58,7 +58,7 @@ export default function Clients() {
     }
   }
 
-  async function updateField(user_id: string, patch: Partial<ClientRow>) {
+  async function updateField(user_id: string, patch: { gender?: "hombres" | "damas" | null; level?: number; status?: "pending" | "active" | "blocked" }) {
     const { error } = await supabase.from("profiles").update(patch).eq("user_id", user_id);
     if (error) { toast.error(error.message); return; }
     load();
