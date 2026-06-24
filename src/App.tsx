@@ -11,7 +11,9 @@ import AdminLayout from "./pages/admin/AdminLayout.tsx";
 import RoutinesList from "./pages/admin/RoutinesList.tsx";
 import RoutineEditor from "./pages/admin/RoutineEditor.tsx";
 import Admins from "./pages/admin/Admins.tsx";
+import Clients from "./pages/admin/Clients.tsx";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute.tsx";
+import AccountGate from "./components/AccountGate.tsx";
 import { AuthProvider } from "./hooks/useAuth.tsx";
 
 const queryClient = new QueryClient();
@@ -24,13 +26,14 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<AccountGate><Index /></AccountGate>} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
               <Route index element={<RoutinesList />} />
               <Route path="routines/:id" element={<RoutineEditor />} />
-              <Route path="admins" element={<Admins />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="admins" element={<ProtectedAdminRoute requireSuperadmin><Admins /></ProtectedAdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
