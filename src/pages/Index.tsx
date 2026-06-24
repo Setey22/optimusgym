@@ -116,8 +116,9 @@ function useDayProgress(gender: Gender, level: number, day: number, ids: string[
 }
 
 export default function Index() {
-  const { user, isAdmin, signOut } = useAuth();
-  const [gender, setGender] = useState<Gender>("hombres");
+  const { user, isAdmin, isClient, profile, signOut, loading: authLoading } = useAuth();
+  const lockedGender = !isAdmin && isClient ? profile?.gender ?? null : null;
+  const [gender, setGender] = useState<Gender>(lockedGender ?? "hombres");
   const [level, setLevel] = useState(1);
   const [day, setDay] = useState(1);
   const [routine, setRoutine] = useState<Routine | null>(null);
@@ -126,6 +127,43 @@ export default function Index() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<Exercise | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (lockedGender && gender !== lockedGender) setGender(lockedGender);
+  }, [lockedGender, gender]);
+
+  // Public landing for visitors
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-ink text-white flex flex-col">
+        <main className="flex-1 flex items-center justify-center px-6 text-center">
+          <div className="max-w-lg space-y-5">
+            <h1 className="text-display text-4xl md:text-6xl font-black uppercase tracking-widest">Optimus Gym</h1>
+            <p className="text-white/70">Plataforma privada de entrenamiento. Accedé con tu cuenta para ver tus rutinas.</p>
+            <Link to="/auth" className="inline-block bg-yellow text-ink font-bold px-6 py-3 rounded-full uppercase tracking-widest text-sm">
+              Iniciar sesión
+            </Link>
+          </div>
+        </main>
+        <footer className="pb-6 text-center text-[10px] text-white/40 uppercase tracking-widest">
+          Acceso solo por invitación
+        </footer>
+      </div>
+    );
+  }
+
+  // Client without assigned gender: show waiting screen
+  if (!authLoading && user && !isAdmin && isClient && !lockedGender) {
+    return (
+      <div className="min-h-screen bg-ink text-white flex items-center justify-center px-6">
+        <div className="max-w-md text-center space-y-4">
+          <h1 className="text-display text-3xl font-bold uppercase tracking-widest">Sin grupo asignado</h1>
+          <p className="text-white/70">Pedile a tu administrador que te asigne un grupo (Hombres o Damas) para ver tus rutinas.</p>
+          <button onClick={signOut} className="text-yellow font-bold uppercase tracking-widest text-sm">Cerrar sesión</button>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     let cancel = false;
@@ -208,7 +246,9 @@ export default function Index() {
                 <SheetTitle className="text-display tracking-widest">FILTROS</SheetTitle>
               </SheetHeader>
               <div className="space-y-6 mt-6">
-                <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
+                {!lockedGender && (
+                  <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
+                )}
                 <div>
                   <MicroLabel>Nivel</MicroLabel>
                   <div className="flex flex-wrap gap-2">
