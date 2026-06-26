@@ -1,90 +1,50 @@
-# Login con roles: superadmin, admin y cliente
+## Qué está pasando
 
-## Resumen
+Hay dos cosas distintas mezcladas:
 
-Hoy la app tiene un único rol "admin" y la home pública es abierta. Vamos a sumar dos roles más (`superadmin` y `client`), un flujo de invitación, y un panel de cliente con su progreso. Nadie se registra solo: los admins crean los clientes y los superadmins crean a los admins.
+**1. El link de "restablecer contraseña" lleva al editor de Lovable, no a tu app.**
 
-## Roles y qué puede hacer cada uno
+Cuando estás navegando en el preview (`id-preview--...lovable.app`) y pedís "recuperar contraseña", el código manda como URL de retorno `window.location.origin`, que en ese momento es el dominio del preview de Lovable. Ese dominio está protegido por el login de Lovable, así que si el usuario tiene cuenta de Lovable (como `hygaluads@gmail.com`) cae adentro del editor, y si no la tiene le pide login de Lovable. Nunca llega a la pantalla de `/reset-password` de tu app publicada (`optimusgym.lovable.app`).
 
-- **superadmin** (vos): todo lo que hace un admin + dar/quitar el rol admin y borrar cualquier usuario.
-- **admin**: crear/editar/borrar rutinas y ejercicios, invitar clientes, aprobar/bloquear clientes, asignarles sexo y nivel, y dar/quitar admins.
-- **client**: inicia sesión, ve su panel con progreso y solo las rutinas de su sexo. No ve el selector hombres/damas.
-- **sin rol / bloqueado**: ve una pantalla "Tu cuenta está pendiente / bloqueada".
+Lo mismo pasa con el email de invitación que manda la edge function `invite-user`: usa el `origin` del que invita, así que si invitás desde el preview, el invitado recibe un link al preview.
 
-## Cambios en la base de datos
+**2. `eze106more@gmail.com` todavía no tiene rol de admin.**
 
-1. Agregar valores `'superadmin'` y `'client'` al enum `app_role`.
-2. Nueva tabla `public.profiles` ligada a `auth.users`:
-   - `user_id` (PK, FK a auth.users, on delete cascade)
-   - `full_name`, `gender` (`hombres|damas|null`), `level` (default 1)
-   - `status` (`pending|active|blocked`, default `active` para clientes creados por admin)
-   - `invited_by` (uuid del admin que lo creó)
-   - timestamps + trigger updated_at
-3. Trigger `on_auth_user_created` que inserta un row vacío en `profiles` por cada nuevo `auth.users`.
-4. Reemplazar `bootstrap_first_admin` por `bootstrap_first_superadmin`: el primer usuario que se registra recibe `superadmin` (y también `admin` para reutilizar policies existentes).
-5. Nuevas funciones `security definer`:
-   - `is_superadmin(uid)` y `is_admin_or_super(uid)` para usar en policies sin recursión.
-6. Policies:
-   - `profiles`: cada usuario ve/actualiza su propio profile (campos limitados). Admins ven/editan todos. Solo superadmin puede tocar `status` de otro admin.
-   - `user_roles`: solo superadmin puede insertar/borrar `admin` o `superadmin`; admins pueden asignar `client`.
-   - `routines` / `exercises`: lectura pública sigue igual; clientes activos pueden leer todo lo publicado (ya cubierto por la policy actual de `is_published`).
-7. GRANTs correspondientes (`authenticated` para profiles, sin `anon`).
+Hay que invitarlo / asignarle el rol.
 
-## Flujo de invitación de clientes
+## Solución propuesta
 
-- El admin va a Admin → Clientes → "Invitar cliente". Ingresa email, nombre, sexo, nivel.
-- Se llama a una edge function `invite-user` (usa `SUPABASE_SERVICE_ROLE_KEY`) que:
-  1. Verifica que quien llama es admin.
-  2. Llama `auth.admin.inviteUserByEmail(email)` → manda mail con link mágico.
-  3. Inserta/actualiza `profiles` (gender, level, status=`active`, invited_by) y asigna rol `client` en `user_roles`.
-- Misma función para "Invitar admin", pero requiere superadmin y asigna rol `admin`.
-- Bloquear/desbloquear cliente = update directo de `profiles.status` desde el dashboard (cubierto por RLS, sin edge function).
+### A) Forzar que los emails de auth siempre apunten al dominio público de la app
 
-## Cambios en el frontend
+Definir una constante `PUBLIC_APP_URL = "https://optimusgym.lovable.app"` y usarla en lugar de `window.location.origin` en:
 
-### Auth y ruteo
-- `useAuth` ahora también expone `isSuperadmin`, `isClient`, `profile` y `status`.
-- Nuevo `ProtectedRoute` genérico (`requireRole="admin" | "client" | "superadmin"`).
-- Si el usuario está logueado pero `status='pending'` o `'blocked'`, mostrar pantalla bloqueante con botón "Cerrar sesión".
+- `src/pages/Auth.tsx` → `resetPasswordForEmail(..., { redirectTo: PUBLIC_APP_URL + "/reset-password" })`
+- `src/pages/Auth.tsx` → `signUp(..., { emailRedirectTo: PUBLIC_APP_URL + "/admin" })`
+- `supabase/functions/invite-user/index.ts` → `redirectTo: PUBLIC_APP_URL + "/reset-password"` (en vez de leer del header `origin`)
 
-### Home pública (`/`)
-- Si no hay sesión: pantalla landing breve con CTA "Iniciar sesión" (sin selector hombres/damas público — la app ahora es privada).
-- Si hay sesión cliente activa: redirige a `/app`.
-- Si hay sesión admin: redirige a `/admin`.
+Así, sin importar desde dónde se mande el email (preview, editor, o app), el link siempre cae en `https://optimusgym.lovable.app/reset-password`, que es público y no pide login de Lovable.
 
-### Panel cliente (`/app`)
-- Header con nombre del cliente + logout sutil.
-- Card de "Tu progreso" mostrando días completados (lee los `localStorage` actuales por ahora; podemos migrar a DB después si querés).
-- Selector de Nivel y Día (sin hombres/damas porque ya está fijado en el profile).
-- Grid de ejercicios del nivel/día actual, igual que hoy, con check + celebración.
+> Nota: además hay que asegurarse de que en la configuración de Auth de Lovable Cloud, esa URL esté permitida como Redirect URL. Te aviso si hace falta agregarla manualmente.
 
-### Panel admin (`/admin`)
-- Sidebar agrega ítem **Clientes** y mantiene **Rutinas** y **Administradores**.
-- **Clientes**: tabla (nombre, email, sexo, nivel, estado, último acceso) con acciones: invitar, editar sexo/nivel, bloquear/activar, borrar.
-- **Administradores**: solo visible para superadmin. Botones "Invitar admin", "Revocar admin", "Promover a superadmin" (este último solo para el primer superadmin). La pantalla actual que pide pegar UUID se reemplaza por invitación por email.
-- **Rutinas**: queda como hoy.
+### B) Dar admin a `eze106more@gmail.com`
 
-### Index / data fetching
-- `src/pages/Index.tsx` se parte: la lógica de selector hombres/damas se mantiene pero la home cliente la usa con el sexo fijado del profile.
+Dos opciones, vos elegís en el chat después de aprobar este plan:
 
-## Detalles técnicos
+- **Si todavía no tiene cuenta en la app:** lo invitamos desde el panel `/admin/admins` (vos como superadmin) — al aprobar el plan te explico el paso a paso, no hace falta tocar código.
+- **Si ya creó cuenta o querés que quede asignado ya mismo sin esperar a que confirme:** corro una migración / insert puntual que cree el `profile` activo y le asigne el rol `admin` directamente por SQL.
 
-- **Migración SQL en una sola call** con: enum nuevo, tabla profiles + grants + RLS + policies, trigger handle_new_user, funciones helper, ajuste de bootstrap, y reemplazo de policies de `user_roles` para soportar superadmin.
-- **Edge function `invite-user`** (`verify_jwt = false`, validamos token en código): valida CORS, valida body con zod (`email`, `role: 'client'|'admin'`, `full_name?`, `gender?`, `level?`), verifica que el JWT del caller corresponde a admin/superadmin según el rol pedido, llama `supabaseAdmin.auth.admin.inviteUserByEmail` con `redirectTo` apuntando a `/reset-password`, y actualiza `profiles` + `user_roles`.
-- **Configuración auth**: dejar signups públicos deshabilitados (`disable_signup: true`) porque todo es por invitación. Mantener email auth y agregar Google opcional (lo dejamos para después si no lo pedís ahora).
-- **Migración del admin actual**: el script bootstrap garantiza que el primer registro siga siendo superadmin. Si ya hay admins, agregamos manualmente `superadmin` al user_id que indiques tras aprobar la migración.
-- **Compatibilidad**: las policies actuales que usan `has_role(uid, 'admin')` siguen funcionando porque al superadmin también le asignamos rol `admin`.
+### C) Sobre `hygaluads@gmail.com`
 
-## Orden de implementación
+Una vez aplicado (A), el link de recuperación va a llevar a `optimusgym.lovable.app/reset-password` y ahí sí va a poder elegir nueva contraseña sin que Lovable se meta en el medio. No hay que hacer nada especial con ese email aparte de pedir un nuevo link de recuperación después del fix.
 
-1. Migración (enum, profiles, triggers, policies, bootstrap).
-2. Edge function `invite-user` + secret check (usa los secrets de Supabase ya existentes).
-3. `useAuth` extendido + `ProtectedRoute` + pantalla "pending/blocked".
-4. Reescritura de `/` (landing privada) y nueva ruta `/app` (panel cliente).
-5. Nueva pantalla admin "Clientes" + refactor de "Administradores" con invitación por email.
-6. Verificación con Playwright: login superadmin → invita admin → invita cliente → cliente entra y ve solo sus rutinas.
+## Archivos a tocar
 
-## Preguntas abiertas (las puedo asumir si no aclarás)
+- `src/lib/config.ts` (nuevo) — exporta `PUBLIC_APP_URL`.
+- `src/pages/Auth.tsx` — usar `PUBLIC_APP_URL` en redirectTo.
+- `supabase/functions/invite-user/index.ts` — usar `PUBLIC_APP_URL` en redirectTo.
+- (Opcional, según tu respuesta sobre eze) migración SQL o invitación desde el panel.
 
-- Asumo `disable_signup = true` (nadie se registra solo). Si querés permitir auto-registro "pendiente" después, lo agregamos.
-- Asumo que el progreso por día se sigue guardando en `localStorage` del navegador del cliente. Si querés que el admin vea el progreso real, hay que migrarlo a una tabla `client_progress`.
+## Lo que necesito que me confirmes antes de implementar
+
+1. ¿`eze106more@gmail.com` ya tiene cuenta creada en la app, o lo invito de cero?
+2. ¿Confirmás que `https://optimusgym.lovable.app` es el dominio público "oficial" al que querés que vayan todos los emails? (Si más adelante ponés dominio propio tipo `optimusgym.com`, se cambia ahí nomás.)

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { PUBLIC_APP_URL } from "@/lib/config";
 
 type AuthMode = "signin" | "signup" | "reset";
 
@@ -36,7 +37,7 @@ export default function AuthPage() {
 
     try {
       if (mode === "reset") {
-        const redirectTo = new URL("/reset-password", window.location.origin).toString();
+        const redirectTo = `${PUBLIC_APP_URL}/reset-password`;
         const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
 
         if (error) throw error;
@@ -51,7 +52,7 @@ export default function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/admin` },
+          options: { emailRedirectTo: `${PUBLIC_APP_URL}/admin` },
         });
         if (error) throw error;
         toast.success("Cuenta creada. Ya podés iniciar sesión.");
