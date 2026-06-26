@@ -21,7 +21,6 @@ export default function Clients() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<"hombres" | "damas">("hombres");
-  const [level, setLevel] = useState(1);
   const [busy, setBusy] = useState(false);
 
   async function load() {
