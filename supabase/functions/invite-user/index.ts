@@ -51,8 +51,9 @@ Deno.serve(async (req) => {
     if (!["client", "admin"].includes(body.role)) return json({ error: "Invalid role" }, 400);
 
     const email = body.email.trim().toLowerCase();
-    const origin = req.headers.get("origin") ?? "";
-    const redirectTo = origin ? `${origin}/reset-password` : undefined;
+    // Siempre redirigir al dominio público de la app, no al preview de Lovable.
+    const PUBLIC_APP_URL = "https://optimusgym.lovable.app";
+    const redirectTo = `${PUBLIC_APP_URL}/reset-password`;
 
     const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo,
