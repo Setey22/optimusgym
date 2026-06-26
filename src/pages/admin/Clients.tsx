@@ -21,7 +21,6 @@ export default function Clients() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<"hombres" | "damas">("hombres");
-  const [level, setLevel] = useState(1);
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -44,7 +43,7 @@ export default function Clients() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("invite-user", {
-        body: { email: email.trim().toLowerCase(), role: "client", full_name: fullName || null, gender, level },
+        body: { email: email.trim().toLowerCase(), role: "client", full_name: fullName || null, gender },
       });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
@@ -90,11 +89,7 @@ export default function Clients() {
             <option value="damas">Damas</option>
           </select>
         </div>
-        <div>
-          <Label>Nivel</Label>
-          <Input type="number" min={1} max={7} value={level} onChange={(e) => setLevel(Number(e.target.value))} />
-        </div>
-        <div className="md:col-span-4 flex items-end">
+        <div className="md:col-span-5 flex items-end">
           <Button type="submit" disabled={busy} className="bg-ink text-white hover:bg-ink/90">
             <UserPlus className="h-4 w-4 mr-2" /> {busy ? "Invitando…" : "Invitar cliente"}
           </Button>
@@ -114,7 +109,7 @@ export default function Clients() {
                 <option value="hombres">Hombres</option>
                 <option value="damas">Damas</option>
               </select>
-              <input type="number" min={1} max={7} value={r.level} onChange={(e) => updateField(r.user_id, { level: Number(e.target.value) })} className="h-9 w-16 rounded-md border border-input bg-background px-2 text-sm" />
+              
               <span className={`text-xs uppercase px-2 py-1 rounded ${r.status === "active" ? "bg-emerald-100 text-emerald-800" : r.status === "blocked" ? "bg-red-100 text-red-800" : "bg-yellow text-ink"}`}>{r.status}</span>
               {r.status === "blocked" ? (
                 <Button size="sm" variant="outline" onClick={() => updateField(r.user_id, { status: "active" })}><Unlock className="h-4 w-4 mr-1" /> Activar</Button>
