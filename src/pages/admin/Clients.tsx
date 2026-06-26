@@ -109,7 +109,7 @@ export default function Clients() {
                 <option value="hombres">Hombres</option>
                 <option value="damas">Damas</option>
               </select>
-              <input type="number" min={1} max={7} value={r.level} onChange={(e) => updateField(r.user_id, { level: Number(e.target.value) })} className="h-9 w-16 rounded-md border border-input bg-background px-2 text-sm" />
+              
               <span className={`text-xs uppercase px-2 py-1 rounded ${r.status === "active" ? "bg-emerald-100 text-emerald-800" : r.status === "blocked" ? "bg-red-100 text-red-800" : "bg-yellow text-ink"}`}>{r.status}</span>
               {r.status === "blocked" ? (
                 <Button size="sm" variant="outline" onClick={() => updateField(r.user_id, { status: "active" })}><Unlock className="h-4 w-4 mr-1" /> Activar</Button>
