@@ -89,11 +89,7 @@ export default function Clients() {
             <option value="damas">Damas</option>
           </select>
         </div>
-        <div>
-          <Label>Nivel</Label>
-          <Input type="number" min={1} max={7} value={level} onChange={(e) => setLevel(Number(e.target.value))} />
-        </div>
-        <div className="md:col-span-4 flex items-end">
+        <div className="md:col-span-5 flex items-end">
           <Button type="submit" disabled={busy} className="bg-ink text-white hover:bg-ink/90">
             <UserPlus className="h-4 w-4 mr-2" /> {busy ? "Invitando…" : "Invitar cliente"}
           </Button>
