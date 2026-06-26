@@ -43,7 +43,7 @@ export default function Clients() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("invite-user", {
-        body: { email: email.trim().toLowerCase(), role: "client", full_name: fullName || null, gender, level },
+        body: { email: email.trim().toLowerCase(), role: "client", full_name: fullName || null, gender },
       });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
