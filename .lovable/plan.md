@@ -1,50 +1,31 @@
-## Qué está pasando
 
-Hay dos cosas distintas mezcladas:
+# Integrar logo G23 en la app
 
-**1. El link de "restablecer contraseña" lleva al editor de Lovable, no a tu app.**
+## Paso 1 — Subir el logo como asset CDN
+Subir la imagen a Lovable Assets desde `/mnt/user-uploads/...` y guardar el pointer en `src/assets/logo-g23.png.asset.json`. Así se reutiliza en toda la app con una sola URL.
 
-Cuando estás navegando en el preview (`id-preview--...lovable.app`) y pedís "recuperar contraseña", el código manda como URL de retorno `window.location.origin`, que en ese momento es el dominio del preview de Lovable. Ese dominio está protegido por el login de Lovable, así que si el usuario tiene cuenta de Lovable (como `hygaluads@gmail.com`) cae adentro del editor, y si no la tiene le pide login de Lovable. Nunca llega a la pantalla de `/reset-password` de tu app publicada (`optimusgym.lovable.app`).
+## Paso 2 — Usos del logo (siempre sobre fondo negro/ink)
 
-Lo mismo pasa con el email de invitación que manda la edge function `invite-user`: usa el `origin` del que invita, así que si invitás desde el preview, el invitado recibe un link al preview.
+1. **Login (`src/pages/Auth.tsx`)**
+   - Agregar el logo centrado arriba del título dentro de la tarjeta. Como la tarjeta es blanca, envolverlo en un círculo/bloque `bg-ink` con padding para mantener fondo negro. Tamaño ~88px.
+   - También un logo pequeño en el header negro superior (reemplaza/acompaña al "Volver").
 
-**2. `eze106more@gmail.com` todavía no tiene rol de admin.**
+2. **Admin sidebar (`src/pages/admin/AdminLayout.tsx`)**
+   - El sidebar ya es `bg-ink`. Reemplazar/acompañar el texto "RUTINAS" por el logo (40–48px) + label "ADMIN/SUPERADMIN" debajo.
+   - En el header móvil negro: logo pequeño (28px) al lado de "ADMIN".
 
-Hay que invitarlo / asignarle el rol.
+3. **App cliente (`src/pages/Index.tsx`)**
+   - Logo pequeño en el header de la app (donde hoy aparece "HOMBRES · NIVEL X · DÍA Y"). Solo si el header tiene fondo oscuro; si no, envolverlo en un chip negro redondeado.
 
-## Solución propuesta
+4. **Pantalla de felicitación (`src/components/CompletionCelebration.tsx`)**
+   - El componente ya tiene `bg-ink`. Mostrar el logo arriba del trofeo, o reemplazar el ícono del trofeo por el logo dentro del círculo amarillo (en este caso el fondo sería amarillo → no sirve porque "solo funciona en fondo negro"). 
+   - Solución: mantener el trofeo amarillo y agregar el logo G23 como marca de agua/encabezado encima del bloque de texto, sobre el fondo negro existente (~64px, centrado).
 
-### A) Forzar que los emails de auth siempre apunten al dominio público de la app
+## Detalles técnicos
+- Componente reutilizable `src/components/BrandLogo.tsx` que renderiza `<img src={logo.url} alt="G23" />` con prop `size` y opcional `wrapDark` (envuelve en `bg-ink rounded-full p-2` cuando se usa sobre fondos claros).
+- No tocar lógica de negocio ni rutas.
+- Importar via `import logo from "@/assets/logo-g23.png.asset.json"`.
 
-Definir una constante `PUBLIC_APP_URL = "https://optimusgym.lovable.app"` y usarla en lugar de `window.location.origin` en:
-
-- `src/pages/Auth.tsx` → `resetPasswordForEmail(..., { redirectTo: PUBLIC_APP_URL + "/reset-password" })`
-- `src/pages/Auth.tsx` → `signUp(..., { emailRedirectTo: PUBLIC_APP_URL + "/admin" })`
-- `supabase/functions/invite-user/index.ts` → `redirectTo: PUBLIC_APP_URL + "/reset-password"` (en vez de leer del header `origin`)
-
-Así, sin importar desde dónde se mande el email (preview, editor, o app), el link siempre cae en `https://optimusgym.lovable.app/reset-password`, que es público y no pide login de Lovable.
-
-> Nota: además hay que asegurarse de que en la configuración de Auth de Lovable Cloud, esa URL esté permitida como Redirect URL. Te aviso si hace falta agregarla manualmente.
-
-### B) Dar admin a `eze106more@gmail.com`
-
-Dos opciones, vos elegís en el chat después de aprobar este plan:
-
-- **Si todavía no tiene cuenta en la app:** lo invitamos desde el panel `/admin/admins` (vos como superadmin) — al aprobar el plan te explico el paso a paso, no hace falta tocar código.
-- **Si ya creó cuenta o querés que quede asignado ya mismo sin esperar a que confirme:** corro una migración / insert puntual que cree el `profile` activo y le asigne el rol `admin` directamente por SQL.
-
-### C) Sobre `hygaluads@gmail.com`
-
-Una vez aplicado (A), el link de recuperación va a llevar a `optimusgym.lovable.app/reset-password` y ahí sí va a poder elegir nueva contraseña sin que Lovable se meta en el medio. No hay que hacer nada especial con ese email aparte de pedir un nuevo link de recuperación después del fix.
-
-## Archivos a tocar
-
-- `src/lib/config.ts` (nuevo) — exporta `PUBLIC_APP_URL`.
-- `src/pages/Auth.tsx` — usar `PUBLIC_APP_URL` en redirectTo.
-- `supabase/functions/invite-user/index.ts` — usar `PUBLIC_APP_URL` en redirectTo.
-- (Opcional, según tu respuesta sobre eze) migración SQL o invitación desde el panel.
-
-## Lo que necesito que me confirmes antes de implementar
-
-1. ¿`eze106more@gmail.com` ya tiene cuenta creada en la app, o lo invito de cero?
-2. ¿Confirmás que `https://optimusgym.lovable.app` es el dominio público "oficial" al que querés que vayan todos los emails? (Si más adelante ponés dominio propio tipo `optimusgym.com`, se cambia ahí nomás.)
+## Fuera de alcance
+- No cambiar paleta, tipografía ni layouts existentes.
+- No usar el logo sobre fondos claros sin el wrapper oscuro.
