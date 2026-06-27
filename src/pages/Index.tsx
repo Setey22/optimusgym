@@ -118,8 +118,9 @@ function useDayProgress(gender: Gender, level: number, day: number, ids: string[
 export default function Index() {
   const { user, isAdmin, isClient, profile, signOut, loading: authLoading } = useAuth();
   const lockedGender = !isAdmin && isClient ? profile?.gender ?? null : null;
+  const lockedLevel = !isAdmin && isClient ? profile?.level ?? null : null;
   const [gender, setGender] = useState<Gender>(lockedGender ?? "hombres");
-  const [level, setLevel] = useState(1);
+  const [level, setLevel] = useState(lockedLevel ?? 1);
   const [day, setDay] = useState(1);
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -130,7 +131,8 @@ export default function Index() {
 
   useEffect(() => {
     if (lockedGender && gender !== lockedGender) setGender(lockedGender);
-  }, [lockedGender, gender]);
+    if (lockedLevel && level !== lockedLevel) setLevel(lockedLevel);
+  }, [lockedGender, lockedLevel, gender, level]);
 
   // Public landing for visitors
   if (!authLoading && !user) {
@@ -249,14 +251,16 @@ export default function Index() {
                 {!lockedGender && (
                   <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
                 )}
-                <div>
-                  <MicroLabel>Nivel</MicroLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {LEVELS.map((lv) => (
-                      <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
-                    ))}
+                {!lockedLevel && (
+                  <div>
+                    <MicroLabel>Nivel</MicroLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {LEVELS.map((lv) => (
+                        <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div>
                   <MicroLabel>Día</MicroLabel>
                   <div className="flex flex-wrap gap-2">
