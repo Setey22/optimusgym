@@ -21,6 +21,7 @@ export default function Clients() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<"hombres" | "damas">("hombres");
+  const [level, setLevel] = useState<number>(1);
   const [busy, setBusy] = useState(false);
 
   async function load() {
@@ -43,12 +44,12 @@ export default function Clients() {
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("invite-user", {
-        body: { email: email.trim().toLowerCase(), role: "client", full_name: fullName || null, gender },
+        body: { email: email.trim().toLowerCase(), role: "client", full_name: fullName || null, gender, level },
       });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
       toast.success("Cliente invitado. Se le envió un email.");
-      setEmail(""); setFullName("");
+      setEmail(""); setFullName(""); setLevel(1);
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al invitar");
@@ -73,23 +74,29 @@ export default function Clients() {
     <div className="p-6 md:p-8 max-w-5xl">
       <h1 className="text-display text-3xl font-bold uppercase tracking-widest mb-6">Clientes</h1>
 
-      <form onSubmit={invite} className="bg-white rounded-2xl border border-border p-5 mb-6 grid gap-3 md:grid-cols-5">
-        <div className="md:col-span-2">
+      <form onSubmit={invite} className="bg-white rounded-2xl border border-border p-5 mb-6 grid gap-3 md:grid-cols-6">
+        <div className="md:col-span-3">
           <Label>Email</Label>
           <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@email.com" />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <Label>Nombre</Label>
           <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nombre completo" />
         </div>
-        <div>
+        <div className="md:col-span-3">
           <Label>Sexo</Label>
           <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={gender} onChange={(e) => setGender(e.target.value as "hombres" | "damas")}>
             <option value="hombres">Hombres</option>
             <option value="damas">Damas</option>
           </select>
         </div>
-        <div className="md:col-span-5 flex items-end">
+        <div className="md:col-span-3">
+          <Label>Nivel</Label>
+          <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={level} onChange={(e) => setLevel(Number(e.target.value))}>
+            {[1,2,3,4,5,6,7].map((n) => <option key={n} value={n}>Nivel {n}</option>)}
+          </select>
+        </div>
+        <div className="md:col-span-6 flex items-end">
           <Button type="submit" disabled={busy} className="bg-ink text-white hover:bg-ink/90">
             <UserPlus className="h-4 w-4 mr-2" /> {busy ? "Invitando…" : "Invitar cliente"}
           </Button>
@@ -109,6 +116,10 @@ export default function Clients() {
                 <option value="hombres">Hombres</option>
                 <option value="damas">Damas</option>
               </select>
+              <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={r.level} onChange={(e) => updateField(r.user_id, { level: Number(e.target.value) })}>
+                {[1,2,3,4,5,6,7].map((n) => <option key={n} value={n}>Nivel {n}</option>)}
+              </select>
+              
               
               <span className={`text-xs uppercase px-2 py-1 rounded ${r.status === "active" ? "bg-emerald-100 text-emerald-800" : r.status === "blocked" ? "bg-red-100 text-red-800" : "bg-yellow text-ink"}`}>{r.status}</span>
               {r.status === "blocked" ? (
