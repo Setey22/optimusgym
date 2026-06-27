@@ -251,14 +251,16 @@ export default function Index() {
                 {!lockedGender && (
                   <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
                 )}
-                <div>
-                  <MicroLabel>Nivel</MicroLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {LEVELS.map((lv) => (
-                      <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
-                    ))}
+                {!lockedLevel && (
+                  <div>
+                    <MicroLabel>Nivel</MicroLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {LEVELS.map((lv) => (
+                        <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div>
                   <MicroLabel>Día</MicroLabel>
                   <div className="flex flex-wrap gap-2">
