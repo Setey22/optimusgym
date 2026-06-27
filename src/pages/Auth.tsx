@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { PUBLIC_APP_URL } from "@/lib/config";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type AuthMode = "signin" | "signup" | "reset";
 
@@ -77,13 +78,17 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-ink text-white flex flex-col">
-      <header className="px-4 md:px-8 py-4">
+      <header className="px-4 md:px-8 py-4 flex items-center justify-between">
         <Link to="/" className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm">
           <ArrowLeft className="h-4 w-4" /> Volver
         </Link>
+        <BrandLogo size={32} />
       </header>
-      <main className="flex-1 flex items-center justify-center px-4">
+      <main className="flex-1 flex items-center justify-center px-4 pb-8">
         <div className="w-full max-w-md bg-white text-ink rounded-2xl p-6 md:p-8 shadow-2xl">
+          <div className="flex justify-center -mt-16 mb-4">
+            <BrandLogo size={88} wrapDark className="shadow-xl ring-4 ring-white" />
+          </div>
           <h1 className="text-display text-3xl font-bold uppercase tracking-widest mb-1">
             {mode === "signin" && "Iniciar sesión"}
             {mode === "signup" && "Crear cuenta"}

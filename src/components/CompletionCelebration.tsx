@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Trophy, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export function CompletionCelebration() {
   const firedRef = useRef(false);
@@ -67,6 +68,9 @@ export function CompletionCelebration() {
       <div className="pointer-events-none absolute -left-1/2 -top-1/2 h-[200%] w-[200%] animate-spotlight-rotate bg-[radial-gradient(circle_at_center,rgba(250,204,21,0.18),transparent_45%)]" />
 
       <div className="relative z-10 px-6 py-6 text-center md:px-8 md:py-8">
+        <div className="mx-auto mb-3 flex justify-center">
+          <BrandLogo size={56} />
+        </div>
         <div className="mx-auto mb-4 flex h-16 w-16 animate-trophy-bounce items-center justify-center rounded-full bg-yellow shadow-[0_0_40px_rgba(250,204,21,0.45)] md:h-20 md:w-20">
           <Trophy className="h-8 w-8 text-ink md:h-10 md:w-10" strokeWidth={2.5} />
         </div>

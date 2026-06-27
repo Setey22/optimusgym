@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function AdminLayout() {
   const { signOut, user, isSuperadmin } = useAuth();
@@ -13,9 +14,12 @@ export default function AdminLayout() {
 
   const SidebarContent = (
     <div className="h-full bg-ink text-white flex flex-col">
-      <div className="p-5 border-b border-white/10">
-        <div className="text-display text-xl font-bold tracking-widest">RUTINAS</div>
-        <div className="text-xs uppercase tracking-widest text-yellow mt-1">{isSuperadmin ? "Superadmin" : "Admin"}</div>
+      <div className="p-5 border-b border-white/10 flex items-center gap-3">
+        <BrandLogo size={44} />
+        <div>
+          <div className="text-display text-xl font-bold tracking-widest">RUTINAS</div>
+          <div className="text-xs uppercase tracking-widest text-yellow mt-1">{isSuperadmin ? "Superadmin" : "Admin"}</div>
+        </div>
       </div>
       <nav className="flex-1 p-3 space-y-1" onClick={() => setOpen(false)}>
         <NavItem to="/admin" icon={Dumbbell} end>Rutinas</NavItem>
@@ -49,6 +53,7 @@ export default function AdminLayout() {
               {SidebarContent}
             </SheetContent>
           </Sheet>
+          <BrandLogo size={28} />
           <div className="text-display text-base font-bold tracking-widest">ADMIN</div>
         </header>
         <main key={location.pathname} className="flex-1 min-w-0 overflow-x-hidden"><Outlet /></main>
