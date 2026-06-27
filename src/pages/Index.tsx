@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type Gender = "hombres" | "damas";
 type Routine = {
@@ -275,6 +276,7 @@ export default function Index() {
               </div>
             </SheetContent>
           </Sheet>
+          <BrandLogo size={32} />
           <h1 className="text-display text-xl md:text-2xl font-bold tracking-widest">RUTINAS</h1>
           <div className="ml-auto text-[11px] font-semibold uppercase tracking-widest text-white/60 truncate">
             {summary}

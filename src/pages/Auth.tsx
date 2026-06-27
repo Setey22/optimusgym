@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { PUBLIC_APP_URL } from "@/lib/config";
+import { BrandLogo } from "@/components/BrandLogo";
 
 type AuthMode = "signin" | "signup" | "reset";
 
