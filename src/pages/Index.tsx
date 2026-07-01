@@ -284,40 +284,61 @@ export default function Index() {
         </div>
       </header>
 
-      <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto w-full flex-1">
-        {routine && !loading && !loadError && total > 0 && (
-          <div className="mb-5">
-            {allDone && <CompletionCelebration />}
-            <div className="flex items-center gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-                {count} / {total} · {pct}%
+      {routine && !loading && !loadError && total > 0 && (
+        <div className="sticky top-14 md:top-16 z-20 bg-ink text-white">
+          <div className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-4 pb-3">
+            <div className="flex items-end justify-between gap-4 mb-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-white/50 tracking-[0.2em] uppercase">Entrenamiento hoy</p>
+                <h2 className="text-display text-xl md:text-2xl font-black uppercase tracking-tight leading-none mt-1">
+                  {formatTodayEs()}
+                </h2>
               </div>
-              <Progress value={pct} className="h-2 flex-1 bg-white" />
-              <button
-                onClick={reset}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground hover:text-ink transition-colors"
-                aria-label="Reiniciar progreso del día"
-              >
-                <RotateCcw className="h-3 w-3" /> Reiniciar
-              </button>
+              <div className="text-right shrink-0">
+                <p className="text-display text-2xl md:text-3xl font-black text-yellow leading-none">{pct}%</p>
+                <div className="flex items-center gap-2 justify-end mt-1">
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                    {count} / {total} ejercicios
+                  </p>
+                  <button
+                    onClick={reset}
+                    className="text-[10px] font-bold text-white/50 hover:text-yellow transition-colors uppercase tracking-widest inline-flex items-center gap-1"
+                    aria-label="Reiniciar progreso del día"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-yellow transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      <main className="max-w-6xl mx-auto w-full flex-1">
+        {allDone && routine && !loading && !loadError && total > 0 && (
+          <div className="px-4 md:px-8 pt-6">
+            <CompletionCelebration />
+          </div>
+        )}
         {loading ? (
-          <div className="text-muted-foreground">Cargando…</div>
+          <div className="text-muted-foreground px-4 md:px-8 py-6">Cargando…</div>
         ) : loadError ? (
-          <ErrorState message={loadError} />
+          <div className="px-4 md:px-8 py-6"><ErrorState message={loadError} /></div>
         ) : !routine ? (
-          <EmptyState />
+          <div className="px-4 md:px-8 py-6"><EmptyState /></div>
         ) : dayExercises.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-border p-10 text-center text-muted-foreground">
-            Aún no hay ejercicios cargados para este día.
+          <div className="px-4 md:px-8 py-6">
+            <div className="bg-white rounded-2xl border border-border p-10 text-center text-muted-foreground">
+              Aún no hay ejercicios cargados para este día.
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="flex flex-col md:mt-2">
             {dayExercises.map((ex, i) => (
-              <ExerciseCard
+              <ExerciseRow
                 key={ex.id}
                 index={i + 1}
                 ex={ex}
