@@ -4,11 +4,9 @@ import { Check, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { publicUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 import VideoPlayerDialog from "@/components/VideoPlayerDialog";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -284,40 +282,61 @@ export default function Index() {
         </div>
       </header>
 
-      <main className="px-4 md:px-8 py-6 md:py-10 max-w-6xl mx-auto w-full flex-1">
-        {routine && !loading && !loadError && total > 0 && (
-          <div className="mb-5">
-            {allDone && <CompletionCelebration />}
-            <div className="flex items-center gap-3">
-              <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-                {count} / {total} · {pct}%
+      {routine && !loading && !loadError && total > 0 && (
+        <div className="sticky top-14 md:top-16 z-20 bg-ink text-white">
+          <div className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-4 pb-3">
+            <div className="flex items-end justify-between gap-4 mb-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-white/50 tracking-[0.2em] uppercase">Entrenamiento hoy</p>
+                <h2 className="text-display text-xl md:text-2xl font-black uppercase tracking-tight leading-none mt-1">
+                  {formatTodayEs()}
+                </h2>
               </div>
-              <Progress value={pct} className="h-2 flex-1 bg-white" />
-              <button
-                onClick={reset}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground hover:text-ink transition-colors"
-                aria-label="Reiniciar progreso del día"
-              >
-                <RotateCcw className="h-3 w-3" /> Reiniciar
-              </button>
+              <div className="text-right shrink-0">
+                <p className="text-display text-2xl md:text-3xl font-black text-yellow leading-none">{pct}%</p>
+                <div className="flex items-center gap-2 justify-end mt-1">
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                    {count} / {total} ejercicios
+                  </p>
+                  <button
+                    onClick={reset}
+                    className="text-[10px] font-bold text-white/50 hover:text-yellow transition-colors uppercase tracking-widest inline-flex items-center gap-1"
+                    aria-label="Reiniciar progreso del día"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-yellow transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      <main className="max-w-6xl mx-auto w-full flex-1">
+        {allDone && routine && !loading && !loadError && total > 0 && (
+          <div className="px-4 md:px-8 pt-6">
+            <CompletionCelebration />
+          </div>
+        )}
         {loading ? (
-          <div className="text-muted-foreground">Cargando…</div>
+          <div className="text-muted-foreground px-4 md:px-8 py-6">Cargando…</div>
         ) : loadError ? (
-          <ErrorState message={loadError} />
+          <div className="px-4 md:px-8 py-6"><ErrorState message={loadError} /></div>
         ) : !routine ? (
-          <EmptyState />
+          <div className="px-4 md:px-8 py-6"><EmptyState /></div>
         ) : dayExercises.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-border p-10 text-center text-muted-foreground">
-            Aún no hay ejercicios cargados para este día.
+          <div className="px-4 md:px-8 py-6">
+            <div className="bg-white rounded-2xl border border-border p-10 text-center text-muted-foreground">
+              Aún no hay ejercicios cargados para este día.
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="flex flex-col md:mt-2">
             {dayExercises.map((ex, i) => (
-              <ExerciseCard
+              <ExerciseRow
                 key={ex.id}
                 index={i + 1}
                 ex={ex}
@@ -405,70 +424,86 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-function ExerciseCard({
+function formatTodayEs() {
+  try {
+    const s = new Date().toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "short" });
+    return s.replace(/\./g, "").toUpperCase();
+  } catch {
+    return "";
+  }
+}
+
+function ExerciseRow({
   index, ex, done, onToggle, onPlay,
 }: { index: number; ex: Exercise; done: boolean; onToggle: () => void; onPlay: () => void }) {
-  const img = publicUrl("exercise-covers", ex.cover_image_url);
   const hasVideo = ex.video_type !== "none";
   const repetitions = ex.repetitions?.trim();
 
   return (
-    <article className={cn(
-      "bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all relative",
-      done && "opacity-75 ring-2 ring-emerald-500"
+    <div className={cn(
+      "flex border-b border-border relative overflow-hidden transition-colors",
+      done ? "bg-secondary" : "bg-white"
     )}>
-      <div className="relative aspect-video bg-ink overflow-hidden">
-        {img ? (
-          <img src={img} alt={ex.title} loading="lazy" className="w-full h-full object-cover opacity-90" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-ink to-ink/70" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <span className="absolute top-3 left-3 bg-yellow text-ink text-xs font-bold px-2.5 py-1 rounded-md tracking-wider">
-          #{String(index).padStart(2, "0")}
-        </span>
-
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          aria-label={done ? "Marcar como pendiente" : "Marcar como hecho"}
-          aria-pressed={done}
-          className={cn(
-            "absolute top-3 right-3 z-10 h-9 w-9 rounded-full flex items-center justify-center border-2 transition-all shadow-md",
-            done
-              ? "bg-emerald-500 border-emerald-500 text-white"
-              : "bg-white/90 border-white text-ink hover:bg-white"
+      <div className={cn("w-1.5 shrink-0", done ? "bg-muted-foreground/30" : "bg-yellow")} />
+      <div className={cn("flex-1 min-w-0 px-4 py-5 md:px-6", done && "opacity-60")}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[11px] font-bold text-muted-foreground tracking-wider">
+            #{String(index).padStart(2, "0")}
+          </span>
+          {hasVideo && (
+            <button
+              onClick={onPlay}
+              aria-label={`Reproducir ${ex.title}`}
+              className="inline-flex items-center gap-1 text-ink/50 hover:text-ink transition-colors"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Video</span>
+            </button>
           )}
-        >
-          <Check className={cn("h-5 w-5", !done && "opacity-40")} />
-        </button>
-
-        {hasVideo && (
-          <button aria-label={`Reproducir ${ex.title}`} onClick={onPlay} className="absolute inset-0 flex items-center justify-center group">
-            <span className="h-14 w-14 rounded-full bg-yellow flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <Play className="h-6 w-6 text-ink fill-ink ml-0.5" />
-            </span>
-          </button>
-        )}
-      </div>
-      <div className="px-4 pt-3 pb-4">
+        </div>
         <h3 className={cn(
-          "text-display text-2xl font-black uppercase text-ink leading-[0.95] tracking-tight",
-          done && "line-through decoration-emerald-500/60"
+          "text-display text-xl md:text-2xl font-black uppercase leading-tight tracking-tight text-ink",
+          done && "line-through decoration-2"
         )}>
           {ex.title}
         </h3>
         {repetitions && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="rounded-full bg-yellow px-4 py-1.5 text-display text-xl font-black leading-none text-ink shadow-sm">
+          <div className="mt-2">
+            <span className={cn(
+              "inline-block rounded-md px-2.5 py-1 text-display text-sm font-black leading-none",
+              done ? "bg-muted text-muted-foreground" : "bg-yellow text-ink"
+            )}>
               {repetitions}
             </span>
-            {done && (
-              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600">Hecho</span>
-            )}
           </div>
         )}
-        {ex.tip && <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{ex.tip}</p>}
       </div>
-    </article>
+
+      {done && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="border-4 border-ink/15 text-ink/15 px-4 py-1 -rotate-12 font-black text-2xl uppercase tracking-tighter text-display">
+            Completado
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={onToggle}
+        aria-label={done ? "Marcar como pendiente" : "Marcar como hecho"}
+        aria-pressed={done}
+        className={cn(
+          "w-24 shrink-0 border-l border-border flex flex-col items-center justify-center gap-1 transition-colors relative z-10",
+          done
+            ? "bg-secondary text-muted-foreground hover:bg-muted"
+            : "bg-white text-ink hover:bg-yellow/20 active:bg-yellow"
+        )}
+      >
+        <Check className={cn("h-9 w-9 transition-transform", !done && "stroke-[3]")} />
+        <span className="text-[10px] font-black uppercase tracking-widest">
+          {done ? "Listo" : "Hecho"}
+        </span>
+      </button>
+    </div>
   );
 }
+
