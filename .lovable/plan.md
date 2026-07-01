@@ -1,31 +1,36 @@
+# Rediseño lista de ejercicios (dirección "% grande + sello")
 
-# Integrar logo G23 en la app
+Solo cambia el área de la lista de ejercicios y su barra de progreso en `src/pages/Index.tsx`. No toco lógica, ni datos, ni auth, ni admin.
 
-## Paso 1 — Subir el logo como asset CDN
-Subir la imagen a Lovable Assets desde `/mnt/user-uploads/...` y guardar el pointer en `src/assets/logo-g23.png.asset.json`. Así se reutiliza en toda la app con una sola URL.
+## Cambios
 
-## Paso 2 — Usos del logo (siempre sobre fondo negro/ink)
+### 1. Header sticky de sesión (nuevo bloque debajo del nav actual)
+- Fondo `bg-ink` negro, texto blanco.
+- Izquierda: label chico "ENTRENAMIENTO HOY" + fecha de hoy en español (ej: **MIÉ 01 JUL**) usando `toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' })` en mayúsculas.
+- Derecha: `%` grande en amarillo (`text-yellow`) y debajo `8 / 12 EJERCICIOS`.
+- Barra de progreso fina (`h-1.5`) amarilla sobre track oscuro, ancho = %.
+- Reemplaza el bloque de progreso actual (el que está sobre las cards).
 
-1. **Login (`src/pages/Auth.tsx`)**
-   - Agregar el logo centrado arriba del título dentro de la tarjeta. Como la tarjeta es blanca, envolverlo en un círculo/bloque `bg-ink` con padding para mantener fondo negro. Tamaño ~88px.
-   - También un logo pequeño en el header negro superior (reemplaza/acompaña al "Volver").
+### 2. Filas de ejercicio (reemplaza `ExerciseCard` grid)
+- Lista vertical de filas full-width (sin grid).
+- Estructura por fila: `[barra lateral 1.5px color] [contenido] [botón HECHO ancho 96px]`.
+- Contenido: número `#08` chico + ícono play chiquito (abre video si `video_type !== 'none'`), título en display uppercase bold, chip amarillo con `repetitions`.
+- Barra lateral: amarilla si pendiente, gris si hecha.
+- Botón derecho HECHO: check grande + label "HECHO". Toggle del estado. Fondo `stone-50` normal, se pone amarillo al presionar.
+- Estado completado: fila con opacity + `line-through` en el título + sello rotado "COMPLETADO" con borde y `mix-blend-multiply`.
 
-2. **Admin sidebar (`src/pages/admin/AdminLayout.tsx`)**
-   - El sidebar ya es `bg-ink`. Reemplazar/acompañar el texto "RUTINAS" por el logo (40–48px) + label "ADMIN/SUPERADMIN" debajo.
-   - En el header móvil negro: logo pequeño (28px) al lado de "ADMIN".
-
-3. **App cliente (`src/pages/Index.tsx`)**
-   - Logo pequeño en el header de la app (donde hoy aparece "HOMBRES · NIVEL X · DÍA Y"). Solo si el header tiene fondo oscuro; si no, envolverlo en un chip negro redondeado.
-
-4. **Pantalla de felicitación (`src/components/CompletionCelebration.tsx`)**
-   - El componente ya tiene `bg-ink`. Mostrar el logo arriba del trofeo, o reemplazar el ícono del trofeo por el logo dentro del círculo amarillo (en este caso el fondo sería amarillo → no sirve porque "solo funciona en fondo negro"). 
-   - Solución: mantener el trofeo amarillo y agregar el logo G23 como marca de agua/encabezado encima del bloque de texto, sobre el fondo negro existente (~64px, centrado).
+### 3. Se remueve/oculta
+- Aspect-video con imagen cover del ejercicio (ya no es card visual).
+- Botón play gigante centrado.
+- Tip largo (se oculta en el rediseño para mantener minimal; el ícono play sigue disponible).
 
 ## Detalles técnicos
-- Componente reutilizable `src/components/BrandLogo.tsx` que renderiza `<img src={logo.url} alt="G23" />` con prop `size` y opcional `wrapDark` (envuelve en `bg-ink rounded-full p-2` cuando se usa sobre fondos claros).
-- No tocar lógica de negocio ni rutas.
-- Importar via `import logo from "@/assets/logo-g23.png.asset.json"`.
 
-## Fuera de alcance
-- No cambiar paleta, tipografía ni layouts existentes.
-- No usar el logo sobre fondos claros sin el wrapper oscuro.
+- Fecha: `new Date().toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '').toUpperCase()`.
+- Se mantienen: hooks `useDayProgress`, `toggle`, `reset`, `VideoPlayerDialog`, `CompletionCelebration`, `EmptyState`, `ErrorState`, filtros del Sheet.
+- Colores por tokens ya existentes (`bg-ink`, `text-yellow`, `bg-yellow`, `border-border`, `bg-surface`). No hardcodeo hex nuevos.
+- El botón "Reiniciar" del día se mueve como texto chico al costado del conteo en el header sticky.
+
+## Archivo a editar
+
+- `src/pages/Index.tsx` — reescribir el header de progreso y el bloque de `dayExercises` (reemplazar `ExerciseCard` por `ExerciseRow`).
