@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Dumbbell, Users, LogOut, ArrowLeft, UserCog, Menu } from "lucide-react";
+import { Dumbbell, Users, LogOut, ArrowLeft, UserCog, Menu, Megaphone } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +24,7 @@ export default function AdminLayout() {
       <nav className="flex-1 p-3 space-y-1" onClick={() => setOpen(false)}>
         <NavItem to="/admin" icon={Dumbbell} end>Rutinas</NavItem>
         <NavItem to="/admin/clients" icon={Users}>Clientes</NavItem>
+        <NavItem to="/admin/ads" icon={Megaphone}>Espacios</NavItem>
         {isSuperadmin && <NavItem to="/admin/admins" icon={UserCog}>Administradores</NavItem>}
       </nav>
       <div className="p-3 border-t border-white/10 space-y-1">
