@@ -12,6 +12,7 @@ import RoutinesList from "./pages/admin/RoutinesList.tsx";
 import RoutineEditor from "./pages/admin/RoutineEditor.tsx";
 import Admins from "./pages/admin/Admins.tsx";
 import Clients from "./pages/admin/Clients.tsx";
+import AdsManager from "./pages/admin/AdsManager.tsx";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute.tsx";
 import AccountGate from "./components/AccountGate.tsx";
 import { AuthProvider } from "./hooks/useAuth.tsx";
@@ -33,6 +34,7 @@ const App = () => (
               <Route index element={<RoutinesList />} />
               <Route path="routines/:id" element={<RoutineEditor />} />
               <Route path="clients" element={<Clients />} />
+              <Route path="ads" element={<AdsManager />} />
               <Route path="admins" element={<ProtectedAdminRoute requireSuperadmin><Admins /></ProtectedAdminRoute>} />
             </Route>
             <Route path="*" element={<NotFound />} />
