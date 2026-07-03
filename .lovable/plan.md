@@ -1,36 +1,76 @@
-# Rediseño lista de ejercicios (dirección "% grande + sello")
 
-Solo cambia el área de la lista de ejercicios y su barra de progreso en `src/pages/Index.tsx`. No toco lógica, ni datos, ni auth, ni admin.
+## Objetivo
 
-## Cambios
+Permitir que los admins carguen y gestionen hasta **3 espacios publicitarios** que aparecen al final de la lista de ejercicios. Cada espacio tiene una imagen rectangular, un link y una audiencia (hombres, damas o ambos).
 
-### 1. Header sticky de sesión (nuevo bloque debajo del nav actual)
-- Fondo `bg-ink` negro, texto blanco.
-- Izquierda: label chico "ENTRENAMIENTO HOY" + fecha de hoy en español (ej: **MIÉ 01 JUL**) usando `toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' })` en mayúsculas.
-- Derecha: `%` grande en amarillo (`text-yellow`) y debajo `8 / 12 EJERCICIOS`.
-- Barra de progreso fina (`h-1.5`) amarilla sobre track oscuro, ancho = %.
-- Reemplaza el bloque de progreso actual (el que está sobre las cards).
+## Cómo lo verá el usuario final
 
-### 2. Filas de ejercicio (reemplaza `ExerciseCard` grid)
-- Lista vertical de filas full-width (sin grid).
-- Estructura por fila: `[barra lateral 1.5px color] [contenido] [botón HECHO ancho 96px]`.
-- Contenido: número `#08` chico + ícono play chiquito (abre video si `video_type !== 'none'`), título en display uppercase bold, chip amarillo con `repetitions`.
-- Barra lateral: amarilla si pendiente, gris si hecha.
-- Botón derecho HECHO: check grande + label "HECHO". Toggle del estado. Fondo `stone-50` normal, se pone amarillo al presionar.
-- Estado completado: fila con opacity + `line-through` en el título + sello rotado "COMPLETADO" con borde y `mix-blend-multiply`.
+Debajo del último ejercicio del día, aparece una sección discreta con el título **"ESPACIOS"** (mismo estilo minimal del resto) y hasta 3 tarjetas rectangulares con la imagen del anunciante. Al tocarlas abren el link en una pestaña nueva. Sólo se muestran los espacios que coincidan con el grupo del usuario (hombres/damas) y que estén activos.
 
-### 3. Se remueve/oculta
-- Aspect-video con imagen cover del ejercicio (ya no es card visual).
-- Botón play gigante centrado.
-- Tip largo (se oculta en el rediseño para mantener minimal; el ícono play sigue disponible).
+## Cómo lo gestionará el admin
+
+Nueva entrada en el sidebar del admin: **"Espacios"** (`/admin/ads`). Una pantalla simple con una lista de hasta 3 slots. Cada fila permite:
+
+- Subir/reemplazar imagen (bucket nuevo `ad-images`, público de lectura)
+- Editar el link (URL destino)
+- Elegir audiencia: **Hombres / Damas / Ambos**
+- Toggle **Activo**
+- Reordenar (posición 1, 2, 3)
+- Borrar
+
+Si hay 3 activos, el botón "Agregar" queda deshabilitado.
 
 ## Detalles técnicos
 
-- Fecha: `new Date().toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '').toUpperCase()`.
-- Se mantienen: hooks `useDayProgress`, `toggle`, `reset`, `VideoPlayerDialog`, `CompletionCelebration`, `EmptyState`, `ErrorState`, filtros del Sheet.
-- Colores por tokens ya existentes (`bg-ink`, `text-yellow`, `bg-yellow`, `border-border`, `bg-surface`). No hardcodeo hex nuevos.
-- El botón "Reiniciar" del día se mueve como texto chico al costado del conteo en el header sticky.
+### Base de datos (migración)
 
-## Archivo a editar
+Tabla nueva `public.ads`:
+```
+id uuid pk default gen_random_uuid()
+image_url text not null
+link_url text not null
+audience text not null check (audience in ('hombres','damas','both'))
+is_active boolean not null default true
+position smallint not null default 1  -- 1..3
+created_at, updated_at timestamptz
+```
 
-- `src/pages/Index.tsx` — reescribir el header de progreso y el bloque de `dayExercises` (reemplazar `ExerciseCard` por `ExerciseRow`).
+Trigger `set_updated_at`. Sin FK a usuarios.
+
+Grants + RLS:
+- `GRANT SELECT ON public.ads TO anon, authenticated`
+- `GRANT ALL ON public.ads TO authenticated, service_role` (admin escribe autenticado)
+- Policy SELECT pública: `is_active = true OR has_role(auth.uid(),'admin')`
+- Policy ALL admins: `has_role(auth.uid(),'admin')`
+
+Límite de 3 filas: se enforza en el cliente admin (chequeo de count antes de insertar) + índice único parcial opcional sobre `position` para evitar duplicados.
+
+### Storage
+
+Bucket nuevo `ad-images` **público** (se crea con `supabase--storage_create_bucket`). Policies: lectura pública, escritura sólo admins autenticados. Reutilizar el patrón de `ImageUploader.tsx`.
+
+### Frontend
+
+**Nuevo:** `src/pages/admin/AdsManager.tsx` — CRUD simple estilo tabla/tarjeta usando `ImageUploader`, `Input`, `Select` (audiencia), `Switch` (activo).
+
+**Nuevo:** `src/components/AdsSection.tsx` — fetch de `ads` filtrado por `is_active` y audiencia (`audience = 'both' OR audience = <gender>`), ordenado por `position`. Renderiza tarjetas con `aspect-[16/9]` (o similar), imagen full-cover y link externo (`target="_blank" rel="noopener"`).
+
+**Edits:**
+- `src/App.tsx`: nueva ruta `/admin/ads` → `AdsManager`
+- `src/pages/admin/AdminLayout.tsx`: nuevo `NavItem` con icono (`Megaphone` de lucide) apuntando a `/admin/ads`
+- `src/pages/Index.tsx`: al final del `<main>`, después del listado de ejercicios (dentro del bloque cuando hay `routine` y ejercicios), montar `<AdsSection gender={gender} />`. Se muestra independientemente del estado de completado del día.
+
+### Fuera de alcance
+- Métricas/impresiones/clicks
+- Vencimiento por fecha (se puede sumar después con campo `expires_at`)
+- Rotación aleatoria (por ahora orden fijo por `position`)
+
+## Archivos afectados
+
+- Migración nueva (tabla `ads` + policies + grants + trigger)
+- Bucket storage `ad-images` + policies
+- `src/pages/admin/AdsManager.tsx` (nuevo)
+- `src/components/AdsSection.tsx` (nuevo)
+- `src/App.tsx` (ruta)
+- `src/pages/admin/AdminLayout.tsx` (nav item)
+- `src/pages/Index.tsx` (montar sección)

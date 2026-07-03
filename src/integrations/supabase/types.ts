@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ads: {
+        Row: {
+          audience: string
+          created_at: string
+          id: string
+          image_url: string
+          is_active: boolean
+          link_url: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          audience: string
+          created_at?: string
+          id?: string
+          image_url: string
+          is_active?: boolean
+          link_url: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          link_url?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           cover_image_url: string | null
