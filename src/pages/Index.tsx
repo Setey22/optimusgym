@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { BrandLogo } from "@/components/BrandLogo";
+import AdsSection from "@/components/AdsSection";
 
 type Gender = "hombres" | "damas";
 type Routine = {
@@ -347,6 +348,7 @@ export default function Index() {
             ))}
           </div>
         )}
+        {routine && !loading && !loadError && <AdsSection gender={gender} />}
       </main>
 
       <footer className="mt-12 pb-6 pt-4 text-center text-[10px] text-muted-foreground/60 uppercase tracking-widest space-y-2">
