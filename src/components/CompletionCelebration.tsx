@@ -6,8 +6,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 export function CompletionCelebration() {
   const firedRef = useRef(false);
-
-  useEffect(() => {
+  const [open, setOpen] = useState(true);
     if (firedRef.current) return;
     firedRef.current = true;
 
