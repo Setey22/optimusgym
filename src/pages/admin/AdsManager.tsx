@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, Plus, ExternalLink } from "lucide-react";
+import { Trash2, Plus, ExternalLink, Upload, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import ImageUploader from "@/components/ImageUploader";
-import { publicUrl } from "@/lib/media";
+import { uploadFile, removeFile, publicUrl } from "@/lib/media";
+import { cn } from "@/lib/utils";
 
 type Ad = {
   id: string;
@@ -23,6 +23,35 @@ type Ad = {
 
 const BUCKET = "ad-images";
 const MAX_ADS = 3;
+const TARGET_W = 1600;
+const TARGET_H = 900; // 16:9
+
+async function normalizeTo16x9(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const srcRatio = bitmap.width / bitmap.height;
+  const dstRatio = TARGET_W / TARGET_H;
+  let sx = 0, sy = 0, sw = bitmap.width, sh = bitmap.height;
+  if (srcRatio > dstRatio) {
+    // recorta laterales
+    sw = bitmap.height * dstRatio;
+    sx = (bitmap.width - sw) / 2;
+  } else {
+    // recorta arriba/abajo
+    sh = bitmap.width / dstRatio;
+    sy = (bitmap.height - sh) / 2;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = TARGET_W;
+  canvas.height = TARGET_H;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, TARGET_W, TARGET_H);
+  bitmap.close?.();
+  const blob: Blob = await new Promise((res, rej) =>
+    canvas.toBlob((b) => (b ? res(b) : rej(new Error("No se pudo procesar la imagen"))), "image/jpeg", 0.85)
+  );
+  return new File([blob], "ad.jpg", { type: "image/jpeg" });
+}
 
 export default function AdsManager() {
   const [ads, setAds] = useState<Ad[]>([]);
@@ -44,23 +73,17 @@ export default function AdsManager() {
   useEffect(() => { load(); }, []);
 
   async function addSlot() {
-    if (ads.length >= MAX_ADS) {
-      toast.error(`Máximo ${MAX_ADS} espacios`);
-      return;
-    }
+    if (ads.length >= MAX_ADS) { toast.error(`Máximo ${MAX_ADS} espacios`); return; }
     setCreating(true);
-    const usedPositions = new Set(ads.map((a) => a.position));
+    const used = new Set(ads.map((a) => a.position));
     let pos = 1;
-    while (usedPositions.has(pos) && pos <= MAX_ADS) pos++;
+    while (used.has(pos) && pos <= MAX_ADS) pos++;
     const { error } = await supabase.from("ads").insert({
-      image_url: "",
-      link_url: "https://",
-      audience: "both",
-      is_active: false,
-      position: pos,
+      image_url: "", link_url: "https://", audience: "both",
+      is_active: false, position: pos,
     });
     setCreating(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { console.error(error); toast.error(error.message); return; }
     toast.success("Espacio creado");
     load();
   }
@@ -68,15 +91,18 @@ export default function AdsManager() {
   async function updateAd(id: string, patch: Partial<Ad>) {
     setAds((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
     const { error } = await supabase.from("ads").update(patch).eq("id", id);
-    if (error) { toast.error(error.message); load(); }
+    if (error) { console.error(error); toast.error(error.message); load(); }
   }
 
-  async function deleteAd(id: string) {
+  async function deleteAd(ad: Ad) {
     if (!confirm("¿Eliminar este espacio?")) return;
-    const { error } = await supabase.from("ads").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    const { error } = await supabase.from("ads").delete().eq("id", ad.id);
+    if (error) { console.error(error); toast.error(error.message); return; }
+    if (ad.image_url) {
+      try { await removeFile(BUCKET, ad.image_url); } catch (e) { console.error(e); }
+    }
     toast.success("Eliminado");
-    setAds((prev) => prev.filter((a) => a.id !== id));
+    setAds((prev) => prev.filter((a) => a.id !== ad.id));
   }
 
   return (
@@ -85,7 +111,7 @@ export default function AdsManager() {
         <div>
           <h1 className="text-display text-2xl md:text-3xl font-bold uppercase tracking-widest">Espacios publicitarios</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Hasta {MAX_ADS} espacios que aparecen al final de la lista de ejercicios.
+            Hasta {MAX_ADS} espacios al final de la lista de ejercicios. Las imágenes se recortan a 16:9.
           </p>
         </div>
         <Button
@@ -106,10 +132,92 @@ export default function AdsManager() {
       ) : (
         <div className="space-y-4">
           {ads.map((ad) => (
-            <AdRow key={ad.id} ad={ad} onUpdate={(p) => updateAd(ad.id, p)} onDelete={() => deleteAd(ad.id)} />
+            <AdRow key={ad.id} ad={ad} onUpdate={(p) => updateAd(ad.id, p)} onDelete={() => deleteAd(ad)} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AdImage({
+  value, onChange,
+}: {
+  value: string | null;
+  onChange: (path: string | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const url = publicUrl(BUCKET, value);
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Subí una imagen"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("Máx 10MB"); return; }
+    setBusy(true);
+    try {
+      const normalized = await normalizeTo16x9(file);
+      const old = value;
+      const path = await uploadFile(BUCKET, normalized);
+      onChange(path);
+      if (old) { try { await removeFile(BUCKET, old); } catch (e) { console.error(e); } }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Error al subir la imagen");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemove(e: React.MouseEvent) {
+    e.stopPropagation();
+    const old = value;
+    onChange(null);
+    if (old) { try { await removeFile(BUCKET, old); } catch (err) { console.error(err); } }
+  }
+
+  return (
+    <div>
+      <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+        Imagen (16:9)
+      </div>
+      <div
+        className={cn(
+          "relative aspect-[16/9] rounded-xl border-2 border-dashed bg-surface overflow-hidden",
+          "flex items-center justify-center cursor-pointer hover:border-ink/40 transition-colors"
+        )}
+        onClick={() => inputRef.current?.click()}
+      >
+        {url ? (
+          <img src={url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="text-center text-muted-foreground">
+            <Upload className="h-6 w-6 mx-auto mb-1" />
+            <div className="text-xs">Click para subir</div>
+          </div>
+        )}
+        {busy && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 text-white animate-spin" />
+          </div>
+        )}
+        {url && !busy && (
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black"
+            aria-label="Quitar imagen"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+        />
+      </div>
     </div>
   );
 }
@@ -121,17 +229,12 @@ function AdRow({
   onUpdate: (patch: Partial<Ad>) => void;
   onDelete: () => void;
 }) {
-  const preview = publicUrl(BUCKET, ad.image_url);
   return (
     <div className="bg-white rounded-2xl border border-border p-4 md:p-6 grid md:grid-cols-[280px_1fr_auto] gap-5">
-      <div>
-        <ImageUploader
-          bucket={BUCKET}
-          value={ad.image_url || null}
-          onChange={(path) => onUpdate({ image_url: path ?? "" })}
-          label={`Imagen (posición ${ad.position})`}
-        />
-      </div>
+      <AdImage
+        value={ad.image_url || null}
+        onChange={(path) => onUpdate({ image_url: path ?? "" })}
+      />
 
       <div className="space-y-3 min-w-0">
         <div>
@@ -186,20 +289,14 @@ function AdRow({
             <Switch
               checked={ad.is_active}
               onCheckedChange={(v) => {
-                if (v && !ad.image_url) {
-                  toast.error("Subí una imagen antes de activar");
-                  return;
-                }
-                if (v && !ad.link_url) {
-                  toast.error("Cargá un link antes de activar");
-                  return;
-                }
+                if (v && !ad.image_url) { toast.error("Subí una imagen antes de activar"); return; }
+                if (v && !ad.link_url) { toast.error("Cargá un link antes de activar"); return; }
                 onUpdate({ is_active: v });
               }}
             />
             <span className="text-sm font-medium">{ad.is_active ? "Activo" : "Inactivo"}</span>
           </label>
-          {!preview && <span className="text-xs text-muted-foreground">Falta imagen</span>}
+          {!ad.image_url && <span className="text-xs text-muted-foreground">Falta imagen</span>}
         </div>
       </div>
 
