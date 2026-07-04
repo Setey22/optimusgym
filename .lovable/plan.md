@@ -1,76 +1,38 @@
+## Problema
 
-## Objetivo
+Los espacios publicitarios no se pueden gestionar bien:
+1. Las policies de la tabla `ads` y del bucket `ad-images` sólo permiten al rol `admin`. Si el usuario es `superadmin` sin `admin`, la subida y el guardado fallan silenciosamente.
+2. Al subir una imagen no se normaliza al formato de la tarjeta (16:9), así que quedan imágenes con proporciones raras.
+3. Al eliminar un espacio no se borra el archivo del bucket (queda basura).
 
-Permitir que los admins carguen y gestionen hasta **3 espacios publicitarios** que aparecen al final de la lista de ejercicios. Cada espacio tiene una imagen rectangular, un link y una audiencia (hombres, damas o ambos).
+## Cambios
 
-## Cómo lo verá el usuario final
+### 1. Permisos (migración)
+Reemplazar las policies para aceptar `admin` **o** `superadmin` usando la función ya existente `public.is_admin_or_super(auth.uid())`:
 
-Debajo del último ejercicio del día, aparece una sección discreta con el título **"ESPACIOS"** (mismo estilo minimal del resto) y hasta 3 tarjetas rectangulares con la imagen del anunciante. Al tocarlas abren el link en una pestaña nueva. Sólo se muestran los espacios que coincidan con el grupo del usuario (hombres/damas) y que estén activos.
+- `public.ads`:
+  - SELECT pública: `is_active = true OR public.is_admin_or_super(auth.uid())`
+  - ALL admins/superadmins: `public.is_admin_or_super(auth.uid())`
+- `storage.objects` bucket `ad-images`: INSERT / UPDATE / DELETE permitidos si `is_admin_or_super(auth.uid())`. SELECT pública queda igual.
 
-## Cómo lo gestionará el admin
+### 2. Normalizar imagen a 16:9 al subir
+En `AdsManager.tsx`, antes de llamar a `uploadFile`, procesar el `File` con un canvas: recorte centrado (`object-cover`-style) a 1600×900 y export a JPEG calidad 0.85. Así todas las imágenes coinciden con el formato de la tarjeta y pesan menos.
 
-Nueva entrada en el sidebar del admin: **"Espacios"** (`/admin/ads`). Una pantalla simple con una lista de hasta 3 slots. Cada fila permite:
+Se hace inline en `AdsManager` (no toca `ImageUploader` que se usa en otras pantallas). El flujo:
+- input file → `normalizeTo16x9(file)` → `uploadFile(bucket, normalizedFile)` → guardar path en `ads.image_url`.
+- Reemplazo del `ImageUploader` genérico por un uploader propio del manager con este preproceso y un botón visible de "Eliminar imagen".
 
-- Subir/reemplazar imagen (bucket nuevo `ad-images`, público de lectura)
-- Editar el link (URL destino)
-- Elegir audiencia: **Hombres / Damas / Ambos**
-- Toggle **Activo**
-- Reordenar (posición 1, 2, 3)
-- Borrar
+### 3. Borrar archivo al eliminar espacio
+En `deleteAd`: antes del `delete` en la tabla, si `ad.image_url` existe, llamar `removeFile("ad-images", ad.image_url)`. Igual al reemplazar imagen (ya lo hace `ImageUploader`, se replica en el nuevo uploader).
 
-Si hay 3 activos, el botón "Agregar" queda deshabilitado.
-
-## Detalles técnicos
-
-### Base de datos (migración)
-
-Tabla nueva `public.ads`:
-```
-id uuid pk default gen_random_uuid()
-image_url text not null
-link_url text not null
-audience text not null check (audience in ('hombres','damas','both'))
-is_active boolean not null default true
-position smallint not null default 1  -- 1..3
-created_at, updated_at timestamptz
-```
-
-Trigger `set_updated_at`. Sin FK a usuarios.
-
-Grants + RLS:
-- `GRANT SELECT ON public.ads TO anon, authenticated`
-- `GRANT ALL ON public.ads TO authenticated, service_role` (admin escribe autenticado)
-- Policy SELECT pública: `is_active = true OR has_role(auth.uid(),'admin')`
-- Policy ALL admins: `has_role(auth.uid(),'admin')`
-
-Límite de 3 filas: se enforza en el cliente admin (chequeo de count antes de insertar) + índice único parcial opcional sobre `position` para evitar duplicados.
-
-### Storage
-
-Bucket nuevo `ad-images` **público** (se crea con `supabase--storage_create_bucket`). Policies: lectura pública, escritura sólo admins autenticados. Reutilizar el patrón de `ImageUploader.tsx`.
-
-### Frontend
-
-**Nuevo:** `src/pages/admin/AdsManager.tsx` — CRUD simple estilo tabla/tarjeta usando `ImageUploader`, `Input`, `Select` (audiencia), `Switch` (activo).
-
-**Nuevo:** `src/components/AdsSection.tsx` — fetch de `ads` filtrado por `is_active` y audiencia (`audience = 'both' OR audience = <gender>`), ordenado por `position`. Renderiza tarjetas con `aspect-[16/9]` (o similar), imagen full-cover y link externo (`target="_blank" rel="noopener"`).
-
-**Edits:**
-- `src/App.tsx`: nueva ruta `/admin/ads` → `AdsManager`
-- `src/pages/admin/AdminLayout.tsx`: nuevo `NavItem` con icono (`Megaphone` de lucide) apuntando a `/admin/ads`
-- `src/pages/Index.tsx`: al final del `<main>`, después del listado de ejercicios (dentro del bloque cuando hay `routine` y ejercicios), montar `<AdsSection gender={gender} />`. Se muestra independientemente del estado de completado del día.
-
-### Fuera de alcance
-- Métricas/impresiones/clicks
-- Vencimiento por fecha (se puede sumar después con campo `expires_at`)
-- Rotación aleatoria (por ahora orden fijo por `position`)
+### 4. Feedback de errores
+Mostrar el mensaje real del `error` de Supabase (ya está en `toast.error`) y además loggear en consola para debug. Añadir un `toast` explícito cuando falla la subida por permisos.
 
 ## Archivos afectados
 
-- Migración nueva (tabla `ads` + policies + grants + trigger)
-- Bucket storage `ad-images` + policies
-- `src/pages/admin/AdsManager.tsx` (nuevo)
-- `src/components/AdsSection.tsx` (nuevo)
-- `src/App.tsx` (ruta)
-- `src/pages/admin/AdminLayout.tsx` (nav item)
-- `src/pages/Index.tsx` (montar sección)
+- **Nueva migración** con las policies corregidas de `public.ads` y `storage.objects` (drop + create).
+- `src/pages/admin/AdsManager.tsx`: uploader propio con recorte 16:9, borrado de archivo al eliminar/reemplazar, mejor manejo de errores.
+
+## Fuera de alcance
+- Cambiar `ImageUploader` global.
+- Métricas o vencimiento.
