@@ -1,11 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
-import { Trophy, Zap } from "lucide-react";
+import { Trophy, Zap, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/BrandLogo";
 
 export function CompletionCelebration() {
   const firedRef = useRef(false);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     if (firedRef.current) return;
@@ -55,45 +56,70 @@ export function CompletionCelebration() {
     return () => clearInterval(interval);
   }, []);
 
+  if (!open) return null;
+
   return (
     <div
-      className={cn(
-        "relative mb-5 overflow-hidden rounded-3xl border-2 border-yellow/40 bg-ink text-white shadow-2xl",
-        "animate-celebration-pop"
-      )}
-      role="status"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
       aria-live="polite"
     >
-      {/* subtle spotlight */}
-      <div className="pointer-events-none absolute -left-1/2 -top-1/2 h-[200%] w-[200%] animate-spotlight-rotate bg-[radial-gradient(circle_at_center,rgba(250,204,21,0.18),transparent_45%)]" />
+      <div
+        className="absolute inset-0 bg-ink/80 backdrop-blur-sm"
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+      <div
+        className={cn(
+          "relative w-full max-w-md overflow-hidden rounded-3xl border-2 border-yellow/40 bg-ink text-white shadow-2xl",
+          "animate-celebration-pop"
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
+          aria-label="Cerrar"
+        >
+          <X className="h-4 w-4" />
+        </button>
 
-      <div className="relative z-10 px-6 py-6 text-center md:px-8 md:py-8">
-        <div className="mx-auto mb-3 flex justify-center">
-          <BrandLogo size={56} />
-        </div>
-        <div className="mx-auto mb-4 flex h-16 w-16 animate-trophy-bounce items-center justify-center rounded-full bg-yellow shadow-[0_0_40px_rgba(250,204,21,0.45)] md:h-20 md:w-20">
-          <Trophy className="h-8 w-8 text-ink md:h-10 md:w-10" strokeWidth={2.5} />
-        </div>
+        {/* subtle spotlight */}
+        <div className="pointer-events-none absolute -left-1/2 -top-1/2 h-[200%] w-[200%] animate-spotlight-rotate bg-[radial-gradient(circle_at_center,rgba(250,204,21,0.18),transparent_45%)]" />
 
-        <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-yellow/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-yellow">
-          <Zap className="h-3 w-3 fill-yellow" /> Logro desbloqueado
-        </div>
+        <div className="relative z-10 px-6 py-6 text-center md:px-8 md:py-8">
+          <div className="mx-auto mb-3 flex justify-center">
+            <BrandLogo size={56} />
+          </div>
+          <div className="mx-auto mb-4 flex h-16 w-16 animate-trophy-bounce items-center justify-center rounded-full bg-yellow shadow-[0_0_40px_rgba(250,204,21,0.45)] md:h-20 md:w-20">
+            <Trophy className="h-8 w-8 text-ink md:h-10 md:w-10" strokeWidth={2.5} />
+          </div>
 
-        <h2 className="text-display mt-2 text-3xl font-black uppercase tracking-wider text-white md:text-4xl">
-          ¡Día completado!
-        </h2>
+          <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-yellow/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-yellow">
+            <Zap className="h-3 w-3 fill-yellow" /> Logro desbloqueado
+          </div>
 
-        <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-relaxed text-white/80 md:text-base">
-          Convertiste el esfuerzo en progreso. Descansá, recuperate y volvé mañana con más energía.
-        </p>
+          <h2 className="text-display mt-2 text-3xl font-black uppercase tracking-wider text-white md:text-4xl">
+            ¡Día completado!
+          </h2>
 
-        <div className="mt-5 flex items-center justify-center gap-3">
-          <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/90 backdrop-blur-sm">
-            100% completado
-          </span>
-          <span className="rounded-full bg-yellow px-4 py-2 text-xs font-black uppercase tracking-widest text-ink">
-            Todo hecho
-          </span>
+          <p className="mx-auto mt-2 max-w-md text-sm font-medium leading-relaxed text-white/80 md:text-base">
+            Convertiste el esfuerzo en progreso. Descansá, recuperate y volvé mañana con más energía.
+          </p>
+
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/90 backdrop-blur-sm">
+              100% completado
+            </span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-full bg-yellow px-4 py-2 text-xs font-black uppercase tracking-widest text-ink transition hover:brightness-110"
+            >
+              Continuar
+            </button>
+          </div>
         </div>
       </div>
     </div>
