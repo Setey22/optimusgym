@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { publicUrl } from "@/lib/media";
+import { signedUrl } from "@/lib/media";
 
 type Ad = {
   id: string;
@@ -10,8 +10,10 @@ type Ad = {
   position: number;
 };
 
+const BUCKET = "promo-images";
+
 export default function AdsSection({ gender }: { gender: "hombres" | "damas" }) {
-  const [ads, setAds] = useState<Ad[]>([]);
+  const [ads, setAds] = useState<(Ad & { src: string | null })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,10 +27,14 @@ export default function AdsSection({ gender }: { gender: "hombres" | "damas" }) 
         .in("audience", [gender, "both"])
         .order("position", { ascending: true })
         .limit(3);
+      if (cancel) return;
+      if (error) console.error("promo load error", error);
+      const rows = (data ?? []) as Ad[];
+      const withUrls = await Promise.all(
+        rows.map(async (ad) => ({ ...ad, src: await signedUrl(BUCKET, ad.image_url) })),
+      );
       if (!cancel) {
-        if (error) console.error("promo load error", error);
-        setAds((data ?? []) as Ad[]);
-
+        setAds(withUrls);
         setLoading(false);
       }
     })();
@@ -43,23 +49,23 @@ export default function AdsSection({ gender }: { gender: "hombres" | "damas" }) 
         Espacios
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {ads.map((ad) => {
-          const src = publicUrl("promo-images", ad.image_url) ?? ad.image_url;
-          return (
-            <a
-              key={ad.id}
-              href={ad.link_url}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
-              className="block rounded-2xl overflow-hidden border border-border bg-white hover:shadow-md transition-shadow"
-            >
-              <div className="aspect-[16/9] w-full bg-surface">
-                <img src={src} alt="Espacio publicitario" className="w-full h-full object-cover" loading="lazy" />
-              </div>
-            </a>
-          );
-        })}
+        {ads.map((ad) => (
+          <a
+            key={ad.id}
+            href={ad.link_url}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            className="block rounded-2xl overflow-hidden border border-border bg-white hover:shadow-md transition-shadow"
+          >
+            <div className="aspect-[16/9] w-full bg-surface">
+              {ad.src && (
+                <img src={ad.src} alt="Espacio publicitario" className="w-full h-full object-cover" loading="lazy" />
+              )}
+            </div>
+          </a>
+        ))}
       </div>
     </section>
   );
 }
+
