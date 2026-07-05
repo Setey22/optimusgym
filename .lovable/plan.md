@@ -1,38 +1,43 @@
-## Problema
+## Diagnóstico
 
-Los espacios publicitarios no se pueden gestionar bien:
-1. Las policies de la tabla `ads` y del bucket `ad-images` sólo permiten al rol `admin`. Si el usuario es `superadmin` sin `admin`, la subida y el guardado fallan silenciosamente.
-2. Al subir una imagen no se normaliza al formato de la tarjeta (16:9), así que quedan imágenes con proporciones raras.
-3. Al eliminar un espacio no se borra el archivo del bucket (queda basura).
+El "TypeError: Failed to fetch" no es un problema de permisos ni de backend. En los network logs se ve que:
 
-## Cambios
+1. La subida de la imagen al bucket `ad-images` devuelve **200 OK**.
+2. Inmediatamente después, el `PATCH /rest/v1/ads?id=eq...` que guarda la nueva `image_url` en la fila falla con `Failed to fetch` (la request ni siquiera llega al servidor).
+3. El siguiente `GET /rest/v1/ads` funciona bien.
 
-### 1. Permisos (migración)
-Reemplazar las policies para aceptar `admin` **o** `superadmin` usando la función ya existente `public.is_admin_or_super(auth.uid())`:
+**Causa real: un bloqueador de anuncios (uBlock Origin, AdBlock, Brave Shields, DNS pi-hole, etc.) está bloqueando cualquier URL que contenga `/ads`.** Es una regla de filtro clásica de las listas EasyList. Por eso:
+- La subida al bucket `/storage/v1/object/ad-images/...` pasa (la palabra completa es `ad-images`, no matchea).
+- El `PATCH` a `/rest/v1/ads?...` se cancela en el navegador antes de salir → `Failed to fetch`.
 
-- `public.ads`:
-  - SELECT pública: `is_active = true OR public.is_admin_or_super(auth.uid())`
-  - ALL admins/superadmins: `public.is_admin_or_super(auth.uid())`
-- `storage.objects` bucket `ad-images`: INSERT / UPDATE / DELETE permitidos si `is_admin_or_super(auth.uid())`. SELECT pública queda igual.
+Resultado: la imagen queda subida al storage pero la fila de `ads` nunca se actualiza, así que la tarjeta sigue mostrándose vacía.
 
-### 2. Normalizar imagen a 16:9 al subir
-En `AdsManager.tsx`, antes de llamar a `uploadFile`, procesar el `File` con un canvas: recorte centrado (`object-cover`-style) a 1600×900 y export a JPEG calidad 0.85. Así todas las imágenes coinciden con el formato de la tarjeta y pesan menos.
+## Solución propuesta
 
-Se hace inline en `AdsManager` (no toca `ImageUploader` que se usa en otras pantallas). El flujo:
-- input file → `normalizeTo16x9(file)` → `uploadFile(bucket, normalizedFile)` → guardar path en `ads.image_url`.
-- Reemplazo del `ImageUploader` genérico por un uploader propio del manager con este preproceso y un botón visible de "Eliminar imagen".
+Renombrar la tabla `ads` a un nombre que los bloqueadores no filtren, por ejemplo **`promo_slots`**. Es el fix definitivo; cualquier otra alternativa (proxy, edge function, renombrar campos) no evita que el filtro bloquee la URL.
 
-### 3. Borrar archivo al eliminar espacio
-En `deleteAd`: antes del `delete` en la tabla, si `ad.image_url` existe, llamar `removeFile("ad-images", ad.image_url)`. Igual al reemplazar imagen (ya lo hace `ImageUploader`, se replica en el nuevo uploader).
+### Cambios
 
-### 4. Feedback de errores
-Mostrar el mensaje real del `error` de Supabase (ya está en `toast.error`) y además loggear en consola para debug. Añadir un `toast` explícito cuando falla la subida por permisos.
+1. **Migración**
+   - `ALTER TABLE public.ads RENAME TO promo_slots;`
+   - Recrear las policies con los nuevos nombres (mismas reglas: SELECT si `is_active` o `is_admin_or_super`; ALL si `is_admin_or_super`).
+   - Mantener `ad-images` como bucket (el nombre del bucket no lo bloquean los filtros porque no matchea `/ads` como segmento).
+   - Opcional: renombrar el bucket también a `promo-images` para máxima seguridad. Recomiendo hacerlo por consistencia y para evitar sorpresas con filtros más agresivos.
 
-## Archivos afectados
+2. **Frontend**
+   - `src/pages/admin/AdsManager.tsx`: cambiar `.from("ads")` → `.from("promo_slots")` y `BUCKET = "promo-images"`.
+   - `src/components/AdsSection.tsx`: mismo reemplazo en la query pública.
+   - Mantengo los nombres de componentes/rutas internas (`AdsManager`, `/admin/ads`) porque son solo strings del cliente y no viajan al servidor — pero si querés te lo cambio también.
 
-- **Nueva migración** con las policies corregidas de `public.ads` y `storage.objects` (drop + create).
-- `src/pages/admin/AdsManager.tsx`: uploader propio con recorte 16:9, borrado de archivo al eliminar/reemplazar, mejor manejo de errores.
+3. **Types**
+   - `src/integrations/supabase/types.ts` se regenera automático después de la migración.
+
+### Alternativa mínima (si preferís no renombrar)
+
+Documentar en el panel de admin que hay que desactivar el bloqueador para el dominio del preview. No lo recomiendo: los usuarios finales admin también van a chocar con esto.
 
 ## Fuera de alcance
-- Cambiar `ImageUploader` global.
-- Métricas o vencimiento.
+- Cambiar la UI, layout o lógica de recorte 16:9 (ya funciona).
+- Tocar `ImageUploader` global.
+
+¿Voy con el rename completo (`ads` → `promo_slots`, `ad-images` → `promo-images`)?
