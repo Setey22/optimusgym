@@ -21,7 +21,7 @@ type Ad = {
   position: number;
 };
 
-const BUCKET = "ad-images";
+const BUCKET = "promo-images";
 const MAX_ADS = 3;
 const TARGET_W = 1600;
 const TARGET_H = 900; // 16:9
