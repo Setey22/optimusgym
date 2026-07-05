@@ -22,3 +22,18 @@ export async function removeFile(bucket: string, path: string | null | undefined
   if (!path) return;
   await supabase.storage.from(bucket).remove([path]);
 }
+
+export async function signedUrl(
+  bucket: string,
+  path: string | null | undefined,
+  expiresInSec = 3600,
+): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSec);
+  if (error) {
+    console.error("signedUrl error", error);
+    return null;
+  }
+  return data?.signedUrl ?? null;
+}
+

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { uploadFile, removeFile, publicUrl } from "@/lib/media";
+import { uploadFile, removeFile, signedUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 
 type Ad = {
@@ -147,8 +147,15 @@ function AdImage({
   onChange: (path: string | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const url = publicUrl(BUCKET, value);
+
+  useEffect(() => {
+    let cancel = false;
+    signedUrl(BUCKET, value).then((u) => { if (!cancel) setUrl(u); });
+    return () => { cancel = true; };
+  }, [value]);
+
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) { toast.error("Subí una imagen"); return; }
