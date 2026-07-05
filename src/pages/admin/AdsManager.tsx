@@ -61,7 +61,7 @@ export default function AdsManager() {
   async function load() {
     setLoading(true);
     const { data, error } = await supabase
-      .from("ads")
+      .from("promo_slots")
       .select("*")
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });
@@ -78,7 +78,7 @@ export default function AdsManager() {
     const used = new Set(ads.map((a) => a.position));
     let pos = 1;
     while (used.has(pos) && pos <= MAX_ADS) pos++;
-    const { error } = await supabase.from("ads").insert({
+    const { error } = await supabase.from("promo_slots").insert({
       image_url: "", link_url: "https://", audience: "both",
       is_active: false, position: pos,
     });
@@ -90,13 +90,13 @@ export default function AdsManager() {
 
   async function updateAd(id: string, patch: Partial<Ad>) {
     setAds((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-    const { error } = await supabase.from("ads").update(patch).eq("id", id);
+    const { error } = await supabase.from("promo_slots").update(patch).eq("id", id);
     if (error) { console.error(error); toast.error(error.message); load(); }
   }
 
   async function deleteAd(ad: Ad) {
     if (!confirm("¿Eliminar este espacio?")) return;
-    const { error } = await supabase.from("ads").delete().eq("id", ad.id);
+    const { error } = await supabase.from("promo_slots").delete().eq("id", ad.id);
     if (error) { console.error(error); toast.error(error.message); return; }
     if (ad.image_url) {
       try { await removeFile(BUCKET, ad.image_url); } catch (e) { console.error(e); }
