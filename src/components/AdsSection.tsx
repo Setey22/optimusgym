@@ -19,15 +19,16 @@ export default function AdsSection({ gender }: { gender: "hombres" | "damas" }) 
     (async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from("ads")
+        .from("promo_slots")
         .select("id,image_url,link_url,audience,position")
         .eq("is_active", true)
         .in("audience", [gender, "both"])
         .order("position", { ascending: true })
         .limit(3);
       if (!cancel) {
-        if (error) console.error("ads load error", error);
+        if (error) console.error("promo load error", error);
         setAds((data ?? []) as Ad[]);
+
         setLoading(false);
       }
     })();
@@ -43,7 +44,7 @@ export default function AdsSection({ gender }: { gender: "hombres" | "damas" }) 
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ads.map((ad) => {
-          const src = publicUrl("ad-images", ad.image_url) ?? ad.image_url;
+          const src = publicUrl("promo-images", ad.image_url) ?? ad.image_url;
           return (
             <a
               key={ad.id}
