@@ -233,6 +233,28 @@ export default function Index() {
   const { done, toggle, reset, allDone, count, total } = useDayProgress(gender, level, day, ids);
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
 
+  // Log completion to the cloud once per day/rutine/user
+  const loggedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!allDone || !user || !routine || total === 0) return;
+    const key = `${user.id}:${routine.id}:${day}:${new Date().toDateString()}`;
+    if (loggedRef.current.has(key)) return;
+    loggedRef.current.add(key);
+    supabase.from("completed_days").insert({
+      user_id: user.id,
+      routine_id: routine.id,
+      routine_name: routine.name,
+      gender,
+      level,
+      day,
+    }).then(({ error }) => {
+      if (error && error.code !== "23505") {
+        console.error("completed_days insert", error);
+        loggedRef.current.delete(key);
+      }
+    });
+  }, [allDone, user, routine, day, gender, level, total]);
+
   const summary = `${gender === "hombres" ? "HOMBRES" : "DAMAS"} · NIVEL ${level} · DÍA ${day}`;
 
   return (
