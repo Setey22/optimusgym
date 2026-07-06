@@ -269,22 +269,9 @@ export default function Index() {
             </SheetTrigger>
             <SheetContent side="left" className="w-[88vw] max-w-sm bg-surface">
               <SheetHeader>
-                <SheetTitle className="text-display tracking-widest">FILTROS</SheetTitle>
+                <SheetTitle className="text-display tracking-widest">MENÚ</SheetTitle>
               </SheetHeader>
               <div className="space-y-6 mt-6">
-                {!lockedGender && (
-                  <Segmented label="Grupo" options={[{ value: "hombres", label: "HOMBRES" }, { value: "damas", label: "DAMAS" }]} value={gender} onChange={(v) => setGender(v as Gender)} />
-                )}
-                {!lockedLevel && (
-                  <div>
-                    <MicroLabel>Nivel</MicroLabel>
-                    <div className="flex flex-wrap gap-2">
-                      {LEVELS.map((lv) => (
-                        <Pill key={lv} active={level === lv} onClick={() => setLevel(lv)}>{lv}</Pill>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <div>
                   <MicroLabel>Día</MicroLabel>
                   <div className="flex flex-wrap gap-2">
