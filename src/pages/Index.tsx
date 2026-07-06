@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { Check, History, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { BrandLogo } from "@/components/BrandLogo";
 import AdsSection from "@/components/AdsSection";
+import HistorySheet from "@/components/HistorySheet";
 
 type Gender = "hombres" | "damas";
 type Routine = {
@@ -128,6 +129,7 @@ export default function Index() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<Exercise | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (lockedGender && gender !== lockedGender) setGender(lockedGender);
@@ -231,6 +233,28 @@ export default function Index() {
   const { done, toggle, reset, allDone, count, total } = useDayProgress(gender, level, day, ids);
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
 
+  // Log completion to the cloud once per day/rutine/user
+  const loggedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!allDone || !user || !routine || total === 0) return;
+    const key = `${user.id}:${routine.id}:${day}:${new Date().toDateString()}`;
+    if (loggedRef.current.has(key)) return;
+    loggedRef.current.add(key);
+    supabase.from("completed_days").insert({
+      user_id: user.id,
+      routine_id: routine.id,
+      routine_name: routine.name,
+      gender,
+      level,
+      day,
+    }).then(({ error }) => {
+      if (error && error.code !== "23505") {
+        console.error("completed_days insert", error);
+        loggedRef.current.delete(key);
+      }
+    });
+  }, [allDone, user, routine, day, gender, level, total]);
+
   const summary = `${gender === "hombres" ? "HOMBRES" : "DAMAS"} · NIVEL ${level} · DÍA ${day}`;
 
   return (
@@ -269,6 +293,13 @@ export default function Index() {
                     ))}
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}
+                >
+                  <History className="h-4 w-4" /> Mi historial
+                </Button>
                 <Button className="w-full bg-yellow text-ink hover:bg-yellow/90 font-bold" onClick={() => setMenuOpen(false)}>
                   Ver ejercicios
                 </Button>
@@ -378,6 +409,7 @@ export default function Index() {
         youtubeId={playing?.youtube_id}
         videoUrl={playing?.video_url}
       />
+      <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} />
     </div>
   );
 }

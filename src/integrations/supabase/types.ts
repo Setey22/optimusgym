@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      completed_days: {
+        Row: {
+          completed_at: string
+          completed_date: string
+          created_at: string
+          day: number
+          gender: Database["public"]["Enums"]["routine_gender"]
+          id: string
+          level: number
+          routine_id: string | null
+          routine_name: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          completed_date?: string
+          created_at?: string
+          day: number
+          gender: Database["public"]["Enums"]["routine_gender"]
+          id?: string
+          level: number
+          routine_id?: string | null
+          routine_name?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          completed_date?: string
+          created_at?: string
+          day?: number
+          gender?: Database["public"]["Enums"]["routine_gender"]
+          id?: string
+          level?: number
+          routine_id?: string | null
+          routine_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_days_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           cover_image_url: string | null
