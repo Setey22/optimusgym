@@ -293,6 +293,13 @@ export default function Index() {
                     ))}
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}
+                >
+                  <History className="h-4 w-4" /> Mi historial
+                </Button>
                 <Button className="w-full bg-yellow text-ink hover:bg-yellow/90 font-bold" onClick={() => setMenuOpen(false)}>
                   Ver ejercicios
                 </Button>
