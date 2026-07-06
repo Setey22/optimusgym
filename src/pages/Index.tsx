@@ -409,6 +409,7 @@ export default function Index() {
         youtubeId={playing?.youtube_id}
         videoUrl={playing?.video_url}
       />
+      <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} />
     </div>
   );
 }
