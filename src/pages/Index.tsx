@@ -129,6 +129,7 @@ export default function Index() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<Exercise | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (lockedGender && gender !== lockedGender) setGender(lockedGender);
