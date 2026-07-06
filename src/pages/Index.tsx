@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { Check, History, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { BrandLogo } from "@/components/BrandLogo";
 import AdsSection from "@/components/AdsSection";
+import HistorySheet from "@/components/HistorySheet";
 
 type Gender = "hombres" | "damas";
 type Routine = {
