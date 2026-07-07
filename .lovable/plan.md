@@ -1,66 +1,53 @@
-
 ## Objetivo
 
-Que cada día que el usuario termina quede grabado en su cuenta (no solo en el navegador) y que pueda ver su historial + un contador de días totales completados desde el menú.
+Agregar un gráfico tipo calendario en la vista "Mi historial" para que el usuario vea de un vistazo qué días asistió, pudiendo navegar entre meses con flechas. Los días completados se marcan con una estrella ⭐.
 
 ## Qué se agrega
 
-### 1. Nueva tabla en la base de datos: `completed_days`
+### 1. Nuevo bloque "Calendario" dentro de `HistorySheet`
 
-Guarda cada vez que un usuario completa un día de rutina.
+Se ubica arriba de la lista cronológica (debajo de las estadísticas Totales / Racha / Este mes).
 
-Campos relevantes:
-- `user_id` — dueño del registro
-- `routine_id` — a qué rutina pertenece
-- `gender`, `level`, `day` — combinación completada (para poder mostrar historial aunque la rutina cambie)
-- `routine_name` — copia del nombre en ese momento (así queda legible aunque la rutina se edite/borre)
-- `completed_at` — fecha/hora de finalización
+Contenido:
+- **Encabezado del mes** con flechas a los costados:
+  - `‹`  **Enero 2026**  `›`
+  - Flecha izquierda: mes anterior.
+  - Flecha derecha: mes siguiente (deshabilitada si sería un mes futuro respecto a hoy).
+- **Fila de nombres de días**: L M M J V S D (semana empieza en lunes).
+- **Cuadrícula de días del mes** (6 filas × 7 columnas):
+  - Cada celda muestra el número del día.
+  - Si el usuario completó al menos un día ese día → se superpone una estrella ⭐ (emoji) y la celda se resalta (fondo amarillo suave).
+  - El día de hoy tiene un borde destacado.
+  - Los días fuera del mes actual se muestran en gris tenue (relleno para completar la grilla).
+- **Contador debajo del calendario**: "X días este mes con actividad".
 
-Reglas de acceso:
-- Cada usuario ve, crea y borra solo sus propios registros.
-- Los admins pueden ver los registros de todos (útil a futuro para seguimiento).
-- Índice único por `(user_id, gender, level, day, fecha)` para no duplicar si el usuario reinicia y completa el mismo día dos veces en la misma jornada.
+### 2. Comportamiento
 
-### 2. Guardado automático al completar el día
+- Al abrir el sheet, el mes visible es el mes actual.
+- Los datos usados son los mismos `rows` que ya trae `HistorySheet` desde `completed_days` (no se hace query extra).
+- Se calcula un `Set<string>` con las fechas (formato `YYYY-MM-DD`) que tienen al menos un registro, para lookup O(1) por celda.
+- Cambiar de mes es puramente cliente, no dispara nuevas queries.
 
-En la pantalla principal (`src/pages/Index.tsx`), cuando el progreso pasa a "todos los ejercicios marcados":
-- Se sigue guardando el progreso en `localStorage` (para no perder marcados si recarga).
-- Además se inserta un registro en `completed_days` una sola vez por día/rutina.
-- Si el usuario reinicia el día con el botón de reset, el registro histórico queda (no se borra el pasado).
+### 3. Estética
 
-### 3. Nueva sección "Mi historial" en el menú lateral
-
-Dentro del `Sheet` del menú (ícono ☰ arriba a la izquierda), se agrega un botón "Mi historial" que abre una vista con:
-
-- **Resumen arriba:**
-  - Total de días completados
-  - Racha actual (días consecutivos con al menos un día completado)
-  - Días completados este mes
-- **Lista cronológica** (más reciente arriba) con:
-  - Fecha (ej: "Lun 6 Ene")
-  - Rutina + nivel + día (ej: "Hombres · Nivel 2 · Día 3")
-  - Nombre de la rutina
-
-Vacío: mensaje motivacional "Todavía no completaste ningún día. ¡Vamos!".
-
-### 4. Indicador visual en la lista de días
-
-En los "pills" de días del menú de filtros, marcar con un check chico los días que ya fueron completados alguna vez para esa rutina (opcional pero recomendado, poca fricción).
+- Usa los tokens del proyecto (`bg-surface`, `bg-yellow`, `text-ink`, `border-border`).
+- Celdas cuadradas, tipografía display para el número, estrella emoji encima a la derecha.
+- Consistente con el estilo del resto del sheet (bordes redondeados, uppercase tracking en labels).
 
 ## Detalles técnicos
 
-- Migración crea `public.completed_days` con RLS + GRANTs (`authenticated`, `service_role`) y policies:
-  - SELECT: `auth.uid() = user_id` OR `is_admin_or_super(auth.uid())`
-  - INSERT: `auth.uid() = user_id`
-  - DELETE: `auth.uid() = user_id`
-- Inserción desde el cliente usa `.upsert(..., { onConflict: 'user_id,gender,level,day,completed_date' })` con `completed_date` generado como columna `date` a partir de `completed_at`.
-- Nuevo componente `src/components/HistorySheet.tsx` con la vista de historial (Sheet lateral o dialog).
-- Se agrega link "Mi historial" dentro del menú existente en `Index.tsx`.
-- Query de historial ordenada por `completed_at desc`, limitada a últimos 200 registros con scroll.
-- Cálculo de racha y "este mes" en el cliente sobre los datos ya traídos.
+- Se modifica solo `src/components/HistorySheet.tsx`.
+- Nuevo subcomponente interno `MonthCalendar({ rows })` que maneja su propio `useState<Date>` para el mes visible.
+- Helpers locales:
+  - `monthKey(date)` → `YYYY-MM`
+  - `dayKey(date)` → `YYYY-MM-DD`
+  - `buildMonthGrid(year, month)` → arreglo de 42 celdas `{ date, inMonth }` empezando por lunes.
+- El set de días completados se deriva con `useMemo` a partir de `rows` (una sola vez).
+- La flecha "siguiente" se deshabilita si `visibleMonth >= startOfMonth(today)`.
+- Sin cambios en la base de datos ni en `Index.tsx`.
 
 ## Fuera de alcance
 
-- No se toca el flujo admin.
-- No se migra el historial existente en `localStorage` (arranca desde cero al desplegar).
-- No se agregan notificaciones ni recordatorios.
+- No se agrega vista anual ni heatmap tipo GitHub.
+- No se permite tocar una celda para ver detalle del día (se puede sumar más adelante).
+- No se cambia el guardado de `completed_days`.
