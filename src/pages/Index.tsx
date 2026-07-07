@@ -67,20 +67,51 @@ function progressKey(gender: Gender, level: number, day: number) {
   return `optimus:progress:${gender}:${level}:${day}`;
 }
 
+function todayStamp() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function useDayProgress(gender: Gender, level: number, day: number, ids: string[]) {
   const key = progressKey(gender, level, day);
   const [done, setDone] = useState<Set<string>>(new Set());
   const celebratedRef = useRef<Set<string>>(new Set());
 
-  // load when key changes
+  // load when key changes; reset if stored date is not today
   useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
-      const arr: string[] = raw ? JSON.parse(raw) : [];
-      setDone(new Set(arr));
+      if (!raw) { setDone(new Set()); return; }
+      const parsed = JSON.parse(raw);
+      // Backward compat: old format was a plain array of ids — treat as stale
+      if (Array.isArray(parsed)) {
+        localStorage.removeItem(key);
+        setDone(new Set());
+        return;
+      }
+      if (parsed?.date === todayStamp() && Array.isArray(parsed.ids)) {
+        setDone(new Set(parsed.ids));
+      } else {
+        localStorage.removeItem(key);
+        setDone(new Set());
+      }
     } catch {
       setDone(new Set());
     }
+  }, [key]);
+
+  // Auto-reset at midnight while the app is open
+  useEffect(() => {
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setHours(24, 0, 0, 100);
+    const ms = midnight.getTime() - now.getTime();
+    const t = setTimeout(() => {
+      try { localStorage.removeItem(key); } catch { /* noop */ }
+      setDone(new Set());
+      celebratedRef.current.delete(key);
+    }, ms);
+    return () => clearTimeout(t);
   }, [key]);
 
   const total = ids.length;
@@ -101,7 +132,7 @@ function useDayProgress(gender: Gender, level: number, day: number, ids: string[
   const persist = (next: Set<string>) => {
     setDone(next);
     try {
-      localStorage.setItem(key, JSON.stringify(Array.from(next)));
+      localStorage.setItem(key, JSON.stringify({ date: todayStamp(), ids: Array.from(next) }));
     } catch { /* noop */ }
   };
 
