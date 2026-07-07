@@ -137,3 +137,114 @@ function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: n
     </div>
   );
 }
+
+const WD = ["L", "M", "M", "J", "V", "S", "D"];
+
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function buildMonthGrid(year: number, month: number) {
+  const first = new Date(year, month, 1);
+  // Monday-first offset: getDay() Sun=0..Sat=6 → Mon=0..Sun=6
+  const offset = (first.getDay() + 6) % 7;
+  const start = new Date(year, month, 1 - offset);
+  const cells: { date: Date; inMonth: boolean }[] = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    cells.push({ date: d, inMonth: d.getMonth() === month });
+  }
+  return cells;
+}
+
+function MonthCalendar({ rows }: { rows: Row[] }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [visible, setVisible] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const completedSet = useMemo(() => {
+    const s = new Set<string>();
+    rows.forEach((r) => s.add(dayKey(new Date(r.completed_at))));
+    return s;
+  }, [rows]);
+
+  const cells = useMemo(
+    () => buildMonthGrid(visible.getFullYear(), visible.getMonth()),
+    [visible],
+  );
+
+  const todayKey = dayKey(today);
+  const monthLabel = visible.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  const canGoNext =
+    visible.getFullYear() < today.getFullYear() ||
+    (visible.getFullYear() === today.getFullYear() && visible.getMonth() < today.getMonth());
+
+  const activeThisMonth = cells.filter(
+    (c) => c.inMonth && completedSet.has(dayKey(c.date)),
+  ).length;
+
+  return (
+    <div className="bg-white rounded-xl border border-border p-3">
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => setVisible(new Date(visible.getFullYear(), visible.getMonth() - 1, 1))}
+          className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-ink hover:bg-surface"
+          aria-label="Mes anterior"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <p className="text-display text-sm font-black uppercase tracking-widest text-ink">
+          {monthLabel}
+        </p>
+        <button
+          type="button"
+          onClick={() => canGoNext && setVisible(new Date(visible.getFullYear(), visible.getMonth() + 1, 1))}
+          disabled={!canGoNext}
+          className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-ink hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Mes siguiente"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WD.map((d, i) => (
+          <div key={i} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map(({ date, inMonth }, i) => {
+          const k = dayKey(date);
+          const done = completedSet.has(k);
+          const isToday = k === todayKey;
+          return (
+            <div
+              key={i}
+              className={[
+                "relative aspect-square rounded-md flex items-center justify-center text-xs font-bold",
+                inMonth ? "text-ink" : "text-muted-foreground/40",
+                done ? "bg-yellow/30" : "bg-surface",
+                isToday ? "ring-2 ring-ink" : "",
+              ].join(" ")}
+            >
+              <span className="text-display">{date.getDate()}</span>
+              {done && (
+                <span className="absolute -top-0.5 -right-0.5 text-[10px] leading-none">⭐</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-center mt-3">
+        {activeThisMonth} {activeThisMonth === 1 ? "día" : "días"} con actividad
+      </p>
+    </div>
+  );
+}
+
