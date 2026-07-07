@@ -89,7 +89,9 @@ export default function HistorySheet({ open, onOpenChange }: { open: boolean; on
           <Stat icon={TrendingUp} label="Este mes" value={thisMonth} />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <MonthCalendar rows={rows} />
+
           {loading ? (
             <div className="text-sm text-muted-foreground">Cargando…</div>
           ) : rows.length === 0 ? (
@@ -120,6 +122,7 @@ export default function HistorySheet({ open, onOpenChange }: { open: boolean; on
             </ul>
           )}
         </div>
+
       </SheetContent>
     </Sheet>
   );
