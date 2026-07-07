@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CalendarCheck, Flame, TrendingUp } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Flame, TrendingUp } from "lucide-react";
 
 type Row = {
   id: string;
