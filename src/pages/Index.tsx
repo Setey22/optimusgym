@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, History, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { Check, ChevronRight, Dumbbell, History, LogOut, Menu, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -298,29 +298,104 @@ export default function Index() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[88vw] max-w-sm bg-surface">
-              <SheetHeader>
-                <SheetTitle className="text-display tracking-widest">MENÚ</SheetTitle>
-              </SheetHeader>
-              <div className="space-y-6 mt-6">
-                <div>
-                  <MicroLabel>Día</MicroLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {dayTabs.map((d) => (
-                      <Pill key={d} active={day === d} onClick={() => setDay(d)}>Día {d}</Pill>
-                    ))}
+            <SheetContent side="left" className="w-[88vw] max-w-sm bg-surface p-0 flex flex-col gap-0 border-r-0">
+              {/* Dark header */}
+              <SheetHeader className="bg-ink text-white p-5 space-y-3 text-left">
+                <div className="flex items-center gap-3">
+                  <BrandLogo size={36} />
+                  <div className="min-w-0">
+                    <SheetTitle className="text-display text-xl font-black uppercase tracking-widest text-white leading-none">
+                      Menú
+                    </SheetTitle>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mt-1">
+                      Optimus Gym
+                    </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-2"
-                  onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}
-                >
-                  <History className="h-4 w-4" /> Mi historial
-                </Button>
-                <Button className="w-full bg-yellow text-ink hover:bg-yellow/90 font-bold" onClick={() => setMenuOpen(false)}>
-                  Ver ejercicios
-                </Button>
+                <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                  <div className="h-8 w-8 rounded-full bg-yellow text-ink flex items-center justify-center text-display font-black text-sm shrink-0">
+                    {level}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 leading-none">
+                      {gender === "hombres" ? "Hombres" : "Damas"}
+                    </p>
+                    <p className="text-sm font-bold text-white leading-tight mt-0.5">
+                      Nivel {level} · Día {day}
+                    </p>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                {/* Day selector */}
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Elegí el día
+                    </p>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-ink/40">
+                      {dayTabs.length} días
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {dayTabs.map((d) => {
+                      const active = day === d;
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => setDay(d)}
+                          className={cn(
+                            "aspect-square rounded-xl border flex flex-col items-center justify-center transition-all",
+                            active
+                              ? "bg-yellow border-yellow text-ink shadow-sm"
+                              : "bg-white border-border text-ink hover:border-ink"
+                          )}
+                        >
+                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 leading-none">
+                            Día
+                          </span>
+                          <span className="text-display text-2xl font-black leading-none mt-1">
+                            {d}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* Actions */}
+                <section className="space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                    Acciones
+                  </p>
+                  <MenuAction
+                    icon={Dumbbell}
+                    label="Ver ejercicios"
+                    hint="Volvé a la rutina de hoy"
+                    highlight
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <MenuAction
+                    icon={History}
+                    label="Mi historial"
+                    hint="Progreso y calendario"
+                    onClick={() => { setMenuOpen(false); setHistoryOpen(true); }}
+                  />
+                  {user && (
+                    <MenuAction
+                      icon={LogOut}
+                      label="Cerrar sesión"
+                      hint={profile?.full_name ?? user.email ?? ""}
+                      onClick={() => { setMenuOpen(false); signOut(); }}
+                    />
+                  )}
+                </section>
+              </div>
+
+              <div className="p-4 text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 border-t border-border">
+                Entrená con foco
               </div>
             </SheetContent>
           </Sheet>
