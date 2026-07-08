@@ -545,6 +545,55 @@ function Segmented<T extends string>({ label, options, value, onChange }: { labe
   );
 }
 
+function MenuAction({
+  icon: Icon, label, hint, onClick, highlight = false,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string; hint?: string; onClick: () => void; highlight?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "group w-full flex items-center gap-3 rounded-xl border p-3 transition-all text-left overflow-hidden relative",
+        highlight
+          ? "bg-ink border-ink text-white hover:bg-ink/90"
+          : "bg-white border-border text-ink hover:border-ink"
+      )}
+    >
+      <span
+        className={cn(
+          "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
+          highlight ? "bg-yellow text-ink" : "bg-yellow/20 text-ink"
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-display text-sm font-black uppercase tracking-widest leading-none">
+          {label}
+        </span>
+        {hint && (
+          <span
+            className={cn(
+              "block text-[10px] font-semibold uppercase tracking-widest mt-1 truncate",
+              highlight ? "text-white/60" : "text-muted-foreground"
+            )}
+          >
+            {hint}
+          </span>
+        )}
+      </span>
+      <ChevronRight
+        className={cn(
+          "h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5",
+          highlight ? "text-white/70" : "text-ink/40"
+        )}
+      />
+    </button>
+  );
+}
+
 function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} className={cn("h-10 min-w-10 px-4 rounded-full text-sm font-bold transition-all border", active ? "bg-yellow border-yellow text-ink shadow-sm" : "bg-white border-border text-ink hover:border-ink")}>{children}</button>
